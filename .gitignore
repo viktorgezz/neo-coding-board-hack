@@ -29,7 +29,6 @@ Thumbs.db
 # СЕКРЕТЫ И ОКРУЖЕНИЕ (ENV)
 # ==========================================
 .env
-.env.*
 !.env.example
 venv/
 .venv/
@@ -101,3 +100,4 @@ yarn-error.log*
 logs/
 *.tmp
 *.bak
+amplicode.xml
