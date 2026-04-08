@@ -1,0 +1,103 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
+*.iws
+*.iml
+*.ipr
+
+
+# ==========================================
+# (IDE & OS)
+# ==========================================
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+
+# ==========================================
+# СЕКРЕТЫ И ОКРУЖЕНИЕ (ENV)
+# ==========================================
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+env/
+*.pem
+
+# ==========================================
+# JAVA / SPRING
+# ==========================================
+target/
+build/
+out/
+
+# Зависимости и логи
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.gradle/
+.settings/
+.classpath
+.project
+
+# ==========================================
+# PYTHON (DJANGO & FASTAPI)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.tox/
+
+# Django специфичное
+db.sqlite3
+/static/
+/media/
+
+# FastAPI / Celery
+celerybeat-schedule
+
+# ==========================================
+# JAVASCRIPT / VUE / REACT
+# ==========================================
+node_modules/
+dist/
+/public/hot
+/public/storage
+.cache/
+.eslintcache
+.stylelintcache
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Сборка (Nuxt/Next/Vite и др.)
+.nuxt/
+.next/
+.output/
+
+# ==========================================
+# ПРОЧЕЕ
+# ==========================================
+logs/
+*.tmp
+*.bak
