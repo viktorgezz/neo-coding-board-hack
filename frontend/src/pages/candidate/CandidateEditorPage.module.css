@@ -67,3 +67,23 @@
   height: 100%;
   background: #1e1e1e;
 }
+
+:global(.interviewer-cursor-decoration) {
+  border-left: 3px solid #22d3ee !important;
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.35);
+  animation: interviewerCursorPulse 1s ease-in-out infinite;
+}
+
+@keyframes interviewerCursorPulse {
+  0%,
+  50%,
+  100% {
+    border-left-color: #22d3ee;
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.35);
+  }
+  25%,
+  75% {
+    border-left-color: #67e8f9;
+    box-shadow: 0 0 8px 1px rgba(34, 211, 238, 0.85);
+  }
+}

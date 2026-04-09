@@ -42,6 +42,7 @@ const CreateInterviewPage  = lazy(() => import('@/pages/interviewer/CreateInterv
 const InterviewerRoomPage  = lazy(() => import('@/pages/interviewer/InterviewerRoomPage'));
 
 const ReportPage           = lazy(() => import('@/pages/shared/ReportPage'));
+const TaskBankManagePage   = lazy(() => import('@/pages/shared/TaskBankManagePage'));
 
 const HRDashboardPage      = lazy(() => import('@/pages/hr/HRDashboardPage'));
 
@@ -140,6 +141,14 @@ export const router = createBrowserRouter([
           </HRRoute>
         ),
       },
+      {
+        path: '/task-bank/manage',
+        element: (
+          <HRRoute>
+            {wrap(<TaskBankManagePage />)}
+          </HRRoute>
+        ),
+      },
 
       // Admin (require ADMIN token + role)
       {
@@ -147,6 +156,14 @@ export const router = createBrowserRouter([
         element: (
           <AdminRoute>
             {wrap(<AdminUsersPage />)}
+          </AdminRoute>
+        ),
+      },
+      {
+        path: '/admin/candidates/:id/report',
+        element: (
+          <AdminRoute>
+            {wrap(<ReportPage />)}
           </AdminRoute>
         ),
       },

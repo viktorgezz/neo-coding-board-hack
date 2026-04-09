@@ -18,12 +18,14 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/auth/useAuth';
 import UserRow from '@/components/UserRow';
 import type { AdminUser } from '@/components/UserRow';
 import CreateUserModal from '@/components/CreateUserModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import EditUserModal from '@/components/EditUserModal';
 import Pagination from '@/components/Pagination';
 import styles from './AdminUsersPage.module.css';
 
@@ -60,6 +62,13 @@ interface PageInfo {
   totalPages: number;
 }
 
+interface CandidateRoomSummary {
+  idRoom: string;
+  nameCandidate: string | null;
+  status: 'ACTIVE' | 'FINISHED';
+  dateStart: string;
+}
+
 // ---------------------------------------------------------------------------
 // Skeleton row — local sub-component
 // ---------------------------------------------------------------------------
@@ -91,6 +100,7 @@ function SkeletonRow() {
 
 export default function AdminUsersPage() {
   const { token, userId: currentUserId } = useAuth();
+  const navigate = useNavigate();
   // currentPage: useState — admin page is not shareable, no URL param needed
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -108,6 +118,8 @@ export default function AdminUsersPage() {
   // ── Modal state ───────────────────────────────────────────────────────────
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [userToDelete,      setUserToDelete]      = useState<AdminUser | null>(null);
+  const [userToEdit,        setUserToEdit]        = useState<AdminUser | null>(null);
+  const [candidateRooms,    setCandidateRooms]    = useState<CandidateRoomSummary[]>([]);
 
   // ── Data fetch ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -148,6 +160,23 @@ export default function AdminUsersPage() {
   }, [currentPage, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
   // token is stable for session lifetime — omitting avoids re-fetch on login
 
+  useEffect(() => {
+    const bearerToken = token ?? '';
+    async function fetchCandidates() {
+      try {
+        const res = await fetch('/api/v1/rooms/all?page=0&size=50', {
+          headers: { Authorization: `Bearer ${bearerToken}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { content: CandidateRoomSummary[] };
+        setCandidateRooms(data.content);
+      } catch {
+        // non-blocking section
+      }
+    }
+    void fetchCandidates();
+  }, [token]);
+
   // ── Optimistic list updates ───────────────────────────────────────────────
   const handleUserCreated = useCallback((newUser: AdminUser) => {
     setUsers((prev) => [newUser, ...prev]);
@@ -168,6 +197,14 @@ export default function AdminUsersPage() {
 
   const handleDeleteClick = useCallback((user: AdminUser) => {
     setUserToDelete(user);
+  }, []);
+
+  const handleEditClick = useCallback((user: AdminUser) => {
+    setUserToEdit(user);
+  }, []);
+
+  const handleUserUpdated = useCallback((updatedUser: AdminUser) => {
+    setUsers((prev) => prev.map((user) => (user.id === updatedUser.id ? updatedUser : user)));
   }, []);
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -195,6 +232,13 @@ export default function AdminUsersPage() {
           onClick={() => setIsCreateModalOpen(true)}
         >
           Создать пользователя
+        </button>
+        <button
+          type="button"
+          className={styles.manageTaskBankBtn}
+          onClick={() => navigate('/task-bank/manage')}
+        >
+          Управление задачами
         </button>
       </div>
 
@@ -230,6 +274,7 @@ export default function AdminUsersPage() {
               key={user.id}
               user={user}
               currentUserId={currentUserId}
+              onEdit={handleEditClick}
               onDelete={handleDeleteClick}
             />
           ))
@@ -260,6 +305,38 @@ export default function AdminUsersPage() {
         onClose={() => setUserToDelete(null)}
         onSuccess={handleUserDeleted}
       />
+
+      <EditUserModal
+        isOpen={userToEdit !== null}
+        user={userToEdit}
+        token={resolvedToken}
+        onClose={() => setUserToEdit(null)}
+        onSuccess={handleUserUpdated}
+      />
+
+      <section className={styles.candidateSection}>
+        <h2 className={styles.candidateTitle}>Все кандидаты и графики</h2>
+        <div className={styles.candidateList}>
+          {candidateRooms.map((room) => (
+            <div key={room.idRoom} className={styles.candidateItem}>
+              <div>
+                <div>{room.nameCandidate ?? 'Анонимный кандидат'}</div>
+                <div className={styles.candidateMeta}>
+                  {room.idRoom} · {room.status} · {new Date(room.dateStart).toLocaleString()}
+                </div>
+              </div>
+              <span className={styles.candidateMeta}>Графики доступны</span>
+              <button
+                type="button"
+                className={styles.openReportBtn}
+                onClick={() => navigate(`/admin/candidates/${room.idRoom}/report`)}
+              >
+                Открыть графики
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
 
     </div>
   );

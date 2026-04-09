@@ -8,6 +8,9 @@
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
 .pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 24px;
 }
 
@@ -16,6 +19,21 @@
   font-weight: 600;
   color: #e5e5e5;
   margin: 0;
+}
+
+.manageTaskBankBtn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.manageTaskBankBtn:hover {
+  background: #111b2f;
 }
 
 /* ── Controls bar — tabs (left) + search (right) ─────────────────────────── */

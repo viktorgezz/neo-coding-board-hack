@@ -32,6 +32,13 @@ const ROLE_HOME: Record<AuthRole, string> = {
   admin:       '/admin/users',
 };
 
+const DEMO_ACCOUNTS = [
+  { role: 'admin', email: 'admin@neo.local', password: 'admin123' },
+  { role: 'hr', email: 'hr@neo.local', password: 'hr123' },
+  { role: 'interviewer', email: 'interviewer@neo.local', password: 'interviewer123' },
+  { role: 'candidate', email: 'candidate@neo.local', password: 'candidate123' },
+] as const;
+
 // ---------------------------------------------------------------------------
 // LoginPage
 // ---------------------------------------------------------------------------
@@ -145,6 +152,22 @@ export default function LoginPage() {
           </button>
 
         </form>
+
+        <section className={styles.demoAccounts} aria-label="Демо логины и роли">
+          <h2 className={styles.demoTitle}>Логины и роли</h2>
+          <ul className={styles.demoList}>
+            {DEMO_ACCOUNTS.map((item) => (
+              <li key={item.role} className={styles.demoItem}>
+                <span className={styles.demoRole}>{item.role}</span>
+                <span className={styles.demoEmail}>{item.email}</span>
+                <span className={styles.demoPassword}>{item.password}</span>
+              </li>
+            ))}
+          </ul>
+          <p className={styles.demoHint}>
+            Роль <strong>candidate</strong> обычно входит через экран подключения к сессии.
+          </p>
+        </section>
       </div>
     </main>
   );

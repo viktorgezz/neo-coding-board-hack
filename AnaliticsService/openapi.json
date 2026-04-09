@@ -1,0 +1,650 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NEO CODING BOARD - Analytics & AI Engine",
+    "version": "1.3.0"
+  },
+  "paths": {
+    "/api/v1/rooms/{idRoom}/history": {
+      "post": {
+        "tags": [
+          "Data Ingestion"
+        ],
+        "summary": "Save History",
+        "description": "Принимает историю сессии (снепшоты кода и заметки) и сохраняет её в БД для комнаты.",
+        "operationId": "save_history_api_v1_rooms__idRoom__history_post",
+        "parameters": [
+          {
+            "name": "idRoom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idroom"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionHistory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{idRoom}/metrics/increment-paste": {
+      "post": {
+        "tags": [
+          "Real-time Metrics"
+        ],
+        "summary": "Increment Paste",
+        "description": "Увеличивает счётчик вставок из буфера и пишет событие в хронологию комнаты.",
+        "operationId": "increment_paste_api_v1_rooms__idRoom__metrics_increment_paste_post",
+        "parameters": [
+          {
+            "name": "idRoom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idroom"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{idRoom}/metrics/increment-tab-switch": {
+      "post": {
+        "tags": [
+          "Real-time Metrics"
+        ],
+        "summary": "Increment Tab Switch",
+        "description": "Увеличивает счётчик смены вкладки и пишет событие в хронологию комнаты.",
+        "operationId": "increment_tab_switch_api_v1_rooms__idRoom__metrics_increment_tab_switch_post",
+        "parameters": [
+          {
+            "name": "idRoom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idroom"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{idRoom}/interviewer-assessment": {
+      "post": {
+        "tags": [
+          "Reports & AI"
+        ],
+        "summary": "Save Assessment",
+        "description": "Сохраняет или обновляет оценку интервьюера по комнате (шкалы и вердикт).",
+        "operationId": "save_assessment_api_v1_rooms__idRoom__interviewer_assessment_post",
+        "parameters": [
+          {
+            "name": "idRoom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idroom"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewerAssessment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{idRoom}/candidate-report": {
+      "get": {
+        "tags": [
+          "Reports & AI"
+        ],
+        "summary": "Get Report",
+        "description": "Отчёт: таймлайн и сложность считаются по сессии, radar — из БД, comparative — по пиру-комнатам.",
+        "operationId": "get_report_api_v1_rooms__idRoom__candidate_report_get",
+        "parameters": [
+          {
+            "name": "idRoom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idroom"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidateReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{idRoom}/ai-summary": {
+      "get": {
+        "tags": [
+          "Reports & AI"
+        ],
+        "summary": "Get Ai Summary",
+        "description": "Генерирует AI-резюме по candidate-report комнаты и сохраняет его в БД.",
+        "operationId": "get_ai_summary_api_v1_rooms__idRoom__ai_summary_get",
+        "parameters": [
+          {
+            "name": "idRoom",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Idroom"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AISummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AISummaryResponse": {
+        "properties": {
+          "positivePoints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Positivepoints"
+          },
+          "negativePoints": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Negativepoints"
+          },
+          "aiRecommendation": {
+            "type": "string",
+            "title": "Airecommendation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "positivePoints",
+          "negativePoints",
+          "aiRecommendation"
+        ],
+        "title": "AISummaryResponse"
+      },
+      "CandidateReport": {
+        "properties": {
+          "summary": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Summary"
+          },
+          "timelineEvents": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEvent"
+            },
+            "type": "array",
+            "title": "Timelineevents"
+          },
+          "complexityTrend": {
+            "items": {
+              "$ref": "#/components/schemas/ComplexityPoint"
+            },
+            "type": "array",
+            "title": "Complexitytrend"
+          },
+          "radarMetrics": {
+            "$ref": "#/components/schemas/RadarMetrics"
+          },
+          "comparative": {
+            "$ref": "#/components/schemas/Comparative"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "timelineEvents",
+          "complexityTrend",
+          "radarMetrics",
+          "comparative"
+        ],
+        "title": "CandidateReport"
+      },
+      "CodeSnapshot": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "language": {
+            "type": "string",
+            "title": "Language"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "code",
+          "language"
+        ],
+        "title": "CodeSnapshot"
+      },
+      "Comparative": {
+        "properties": {
+          "candidateZScore": {
+            "type": "number",
+            "title": "Candidatezscore"
+          },
+          "percentile": {
+            "type": "integer",
+            "title": "Percentile"
+          },
+          "distributionCurve": {
+            "items": {
+              "$ref": "#/components/schemas/CurvePoint"
+            },
+            "type": "array",
+            "title": "Distributioncurve"
+          }
+        },
+        "type": "object",
+        "required": [
+          "candidateZScore",
+          "percentile",
+          "distributionCurve"
+        ],
+        "title": "Comparative"
+      },
+      "ComplexityPoint": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "complexity": {
+            "type": "integer",
+            "title": "Complexity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "complexity"
+        ],
+        "title": "ComplexityPoint"
+      },
+      "CurvePoint": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "CurvePoint"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InterviewerAssessment": {
+        "properties": {
+          "systemDesign": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Systemdesign"
+          },
+          "codeReadability": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Codereadability"
+          },
+          "communicationSkills": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Communicationskills"
+          },
+          "coachability": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Coachability"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict"
+          }
+        },
+        "type": "object",
+        "required": [
+          "systemDesign",
+          "codeReadability",
+          "communicationSkills",
+          "coachability",
+          "verdict"
+        ],
+        "title": "InterviewerAssessment"
+      },
+      "InterviewerNote": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "text"
+        ],
+        "title": "InterviewerNote"
+      },
+      "RadarMetrics": {
+        "properties": {
+          "systemDesign": {
+            "type": "integer",
+            "title": "Systemdesign"
+          },
+          "codeReadability": {
+            "type": "integer",
+            "title": "Codereadability"
+          },
+          "communication": {
+            "type": "integer",
+            "title": "Communication"
+          },
+          "coachability": {
+            "type": "integer",
+            "title": "Coachability"
+          },
+          "technicalScore": {
+            "type": "integer",
+            "title": "Technicalscore"
+          },
+          "integrity": {
+            "type": "integer",
+            "title": "Integrity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "systemDesign",
+          "codeReadability",
+          "communication",
+          "coachability",
+          "technicalScore",
+          "integrity"
+        ],
+        "title": "RadarMetrics"
+      },
+      "SessionHistory": {
+        "properties": {
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Starttime"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Endtime"
+          },
+          "codeSnapshots": {
+            "items": {
+              "$ref": "#/components/schemas/CodeSnapshot"
+            },
+            "type": "array",
+            "title": "Codesnapshots"
+          },
+          "interviewerNotes": {
+            "items": {
+              "$ref": "#/components/schemas/InterviewerNote"
+            },
+            "type": "array",
+            "title": "Interviewernotes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "startTime",
+          "endTime",
+          "codeSnapshots",
+          "interviewerNotes"
+        ],
+        "title": "SessionHistory"
+      },
+      "TimelineEvent": {
+        "properties": {
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "timestamp",
+          "type",
+          "label"
+        ],
+        "title": "TimelineEvent"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

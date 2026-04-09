@@ -38,7 +38,8 @@ export function InterviewerRoute({ children }: ProtectedRouteProps) {
 export function HRRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, role } = useAuth();
 
-  if (!isAuthenticated || role !== ROLES.HR) {
+  // HR pages are also available for admin (cross-role analytics access).
+  if (!isAuthenticated || (role !== ROLES.HR && role !== ROLES.ADMIN)) {
     return <Navigate to="/login" replace />;
   }
 

@@ -13,7 +13,7 @@
  */
 
 import { memo } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import RoleBadge from './RoleBadge';
 import { formatDate } from '@/utils/formatDate';
 import styles from './UserRow.module.css';
@@ -29,12 +29,14 @@ export interface AdminUser {
 export interface UserRowProps {
   user:          AdminUser;
   currentUserId: string | null;
+  onEdit:        (user: AdminUser) => void;
   onDelete:      (user: AdminUser) => void;
 }
 
 const UserRow = memo(function UserRow({
   user,
   currentUserId,
+  onEdit,
   onDelete,
 }: UserRowProps) {
   const isSelf = user.id === currentUserId;
@@ -59,6 +61,14 @@ const UserRow = memo(function UserRow({
       </span>
 
       <div className={styles.actionsCell}>
+        <button
+          type="button"
+          className={styles.editBtn}
+          aria-label={`Редактировать ${user.name}`}
+          onClick={() => onEdit(user)}
+        >
+          <Pencil size={14} />
+        </button>
         {/* Delete button hidden for current user — prevents self-deletion */}
         {!isSelf && (
           <button
