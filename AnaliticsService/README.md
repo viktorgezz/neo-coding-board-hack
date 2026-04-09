@@ -121,50 +121,50 @@ docker run --rm -p 8000:8000 --env-file .env neo-analytics-service
 
 Комбинированный raw-скор снапшота:
 
-\[
+```math
 S_i = H_i + C_i
-\]
+```
 
 где:
-- \(H_i\) - эвристическая сложность снимка \(i\);
-- \(C_i\) - цикломатическая сложность снимка \(i\).
+- $H_i$ - эвристическая сложность снимка $i$;
+- $C_i$ - цикломатическая сложность снимка $i$.
 
 ### 4.2 Нормализованный тренд сложности
 
 Для графика тренда используется нормализация по максимуму в рамках текущей сессии:
 
-\[
+```math
 \hat{H}_i = \frac{H_i}{\max_j H_j}, \quad
 \hat{C}_i = \frac{C_i}{\max_j C_j}
-\]
+```
 
 Комбинация:
 
-\[
+```math
 T_i =
 \begin{cases}
 \frac{\hat{H}_i + \hat{C}_i}{2}, & \text{если } \hat{H}_i > 0 \text{ и } \hat{C}_i > 0 \\
 \hat{H}_i + \hat{C}_i, & \text{иначе}
 \end{cases}
-\]
+```
 
 В API `complexityTrend` отправляется в шкале 0..100:
 
-\[
+```math
 T_i^{(100)} = \mathrm{round}(100 \cdot T_i)
-\]
+```
 
 ### 4.3 Z-score кандидата (для сравнительной аналитики)
 
 На основе средних значений по снапшотам и штрафов за поведенческие сигналы:
 
-\[
+```math
 \text{skill} = \frac{1}{n}\sum_{i=1}^{n}(H_i + C_i)
-\]
+```
 
-\[
+```math
 \text{raw} = 3 \cdot \text{skill} - 2 \cdot \text{paste} - 0.5 \cdot \text{tabSwitch}
-\]
+```
 
 где:
 - `paste` - количество вставок из буфера;
@@ -174,41 +174,41 @@ T_i^{(100)} = \mathrm{round}(100 \cdot T_i)
 
 Если в БД достаточно peer-комнат (минимум 2), параметры берутся эмпирически:
 
-\[
+```math
 \mu = \mathrm{mean}(\text{raw}_{peer}), \quad
 \sigma = \mathrm{std}_{pop}(\text{raw}_{peer})
-\]
+```
 
-\[
+```math
 z = \frac{\text{raw}_{candidate} - \mu}{\sigma}
-\]
+```
 
 Перцентиль в эмпирическом режиме:
 
-\[
+```math
 \text{percentile} = 100 \cdot \frac{|\{s \in peer: s \le \text{raw}_{candidate}\}|}{|peer|}
-\]
+```
 
 Если peer-данных мало, используются fallback-параметры:
-- \(\mu = 28.0\)
-- \(\sigma = 10.0\)
+- $\mu = 28.0$
+- $\sigma = 10.0$
 
 И перцентиль считается через CDF стандартного нормального распределения:
 
-\[
+```math
 \Phi(z) = \frac{1}{2}\left(1 + \mathrm{erf}\left(\frac{z}{\sqrt{2}}\right)\right), \quad
 \text{percentile} = 100 \cdot \Phi(z)
-\]
+```
 
-Кривая `distributionCurve` строится как нормализованная плотность \(N(0,1)\):
+Кривая `distributionCurve` строится как нормализованная плотность $N(0,1)$:
 
-\[
+```math
 \varphi(x) = \frac{1}{\sqrt{2\pi}}e^{-x^2/2}
-\]
+```
 
-\[
+```math
 y_{norm}(x) = \frac{\varphi(x)}{\max_x \varphi(x)}
-\]
+```
 
 ### 4.5 Radar-метрики
 
