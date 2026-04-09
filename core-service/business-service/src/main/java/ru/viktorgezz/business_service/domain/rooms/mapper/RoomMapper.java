@@ -1,6 +1,5 @@
 package ru.viktorgezz.business_service.domain.rooms.mapper;
 
-import org.springframework.data.domain.Page;
 import ru.viktorgezz.business_service.domain.rooms.Room;
 import ru.viktorgezz.business_service.domain.rooms.dto.RoomSummaryResponse;
 

@@ -20,11 +20,14 @@ import ru.viktorgezz.business_service.exception.ErrorCode;
 
 import java.util.UUID;
 
+import org.springframework.transaction.annotation.Transactional;
+
 /**
  * Реализация сервиса чтения данных о комнатах.
  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RoomQueryServiceImpl implements RoomQueryService {
 
     private final RoomPagingRepo roomPagingRepo;
