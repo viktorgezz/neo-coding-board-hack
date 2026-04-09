@@ -56,6 +56,19 @@ services:
     ports:
       - "8002:8000"
     restart: unless-stopped
+    
+  app:
+    build:
+      context: ./core-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./core-service/.env
+    container_name: java-business-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
