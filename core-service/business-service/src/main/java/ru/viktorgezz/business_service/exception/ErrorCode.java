@@ -19,6 +19,8 @@ public enum ErrorCode {
     ROOM_ALREADY_FINISHED("ROOM_ALREADY_FINISHED", "Room with id: %s is already finished", HttpStatus.BAD_REQUEST),
     CANDIDATE_ALREADY_REGISTERED("CANDIDATE_ALREADY_REGISTERED", "Candidate is already registered in room: %s", HttpStatus.CONFLICT),
     ROOM_NOT_IN_CREATED_STATUS("ROOM_NOT_IN_CREATED_STATUS", "Room with id: %s is not in CREATED status", HttpStatus.BAD_REQUEST),
+    ROOM_NOT_ACTIVE("ROOM_NOT_ACTIVE", "Room with id: %s is not in ACTIVE status", HttpStatus.BAD_REQUEST),
+    NOTE_NOT_FOUND("NOTE_NOT_FOUND", "Note with id: %s not found in room: %s", HttpStatus.NOT_FOUND),
     INTERNAL_EXCEPTION("INTERNAL_EXCEPTION", "Internal error", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
