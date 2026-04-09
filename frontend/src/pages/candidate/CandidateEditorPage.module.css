@@ -1,0 +1,69 @@
+/*
+ * CandidateEditorPage styles — CSS Modules.
+ *
+ * Design principle: nothing here should be visible. The Monaco editor owns
+ * the entire viewport below the header. The header itself is barely there —
+ * 48px, near-black, single border line. The candidate should feel like they
+ * are in a terminal, not a website.
+ */
+
+/* ── Root shell ───────────────────────────────────────────────────────── */
+
+.candidateRoot {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e; /* Monaco vs-dark background — no gap visible on load */
+  overflow: hidden;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+
+.editorHeader {
+  height: 48px;
+  flex-shrink: 0; /* header never squishes regardless of viewport height */
+  background: #0d0d0d;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+}
+
+/* Vacancy name — left side, fills remaining space */
+.vacancyName {
+  flex: 1;
+  font-size: 13px;
+  color: #888;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0; /* flex child must be able to shrink below its content width */
+}
+
+/* ── Editor wrapper ───────────────────────────────────────────────────── */
+
+.editorWrapper {
+  flex: 1;
+  /*
+   * min-height: 0 is critical.
+   * Without it, a flex child defaults to min-height: auto (content size),
+   * which causes Monaco to overflow the viewport vertically when code is long.
+   */
+  min-height: 0;
+}
+
+/* ── Loading / Suspense fallback ──────────────────────────────────────── */
+
+/*
+ * Shown while:
+ *   (a) the initial fetches (join-info + code/latest) are pending, or
+ *   (b) the Monaco bundle (~2MB) is being downloaded.
+ * Background matches Monaco's vs-dark theme (#1e1e1e) — zero visible flash
+ * when the editor appears, since the background was always the same colour.
+ */
+.editorFallback {
+  height: 100%;
+  background: #1e1e1e;
+}

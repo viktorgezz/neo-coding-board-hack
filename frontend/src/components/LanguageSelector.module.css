@@ -1,0 +1,40 @@
+/*
+ * LanguageSelector styles.
+ *
+ * Minimal header-flush dropdown: no floating shadow, no custom dropdown panel.
+ * Relies on the OS/browser native select rendering but overrides color tokens
+ * to match the editor header's dark palette.
+ */
+
+.select {
+  /* Appearance reset — allows full background/border/color override */
+  appearance: none;
+
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  color: #888;
+  background-color: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  padding: 4px 28px 4px 8px;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+
+  /* Inline chevron via background-image — no extra element, no JS */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23666' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+
+  /* NO transition — instant state change */
+}
+
+.select:focus {
+  border-color: #7c3aed;
+}
+
+/* Firefox / Chrome option element overrides — color only */
+.select option {
+  background-color: #111;
+  color: #e5e5e5;
+}

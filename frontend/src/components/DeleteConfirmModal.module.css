@@ -1,0 +1,113 @@
+/* ── Overlay — same token as CreateUserModal and VerdictModal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+/* ── Card ── */
+.deleteCard {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 10px;
+  padding: 24px;
+}
+
+/* ── Title ── */
+.deleteTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Body ── */
+.deleteBody {
+  font-size: 13px;
+  color: #888;
+  margin: 12px 0 20px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* ── Error ── */
+.deleteError {
+  font-size: 12px;
+  color: #f87171;
+  margin: 0 0 12px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Actions row ── */
+.deleteActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.cancelBtn {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 13px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  color: #888;
+}
+
+.cancelBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.confirmDeleteBtn {
+  height: 34px;
+  padding: 0 14px;
+  background: #dc2626;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+.confirmDeleteBtn:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.confirmDeleteBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Spinner — inside confirm button ── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,27 @@
+/*
+ * InterviewerRoomPage — split layout shell.
+ *
+ * height: 100% fills the AppLayout mainContent area (flex: 1 inside 100vh).
+ * overflow: hidden prevents either column from growing the page — Monaco
+ * and the notes list both manage their own internal scroll independently.
+ */
+
+.roomRoot {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 65% — Monaco code viewer */
+.codeColumn {
+  flex: 0 0 65%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 35% — notes panel */
+.notesColumn {
+  flex: 0 0 35%;
+  height: 100%;
+  overflow: hidden;
+}

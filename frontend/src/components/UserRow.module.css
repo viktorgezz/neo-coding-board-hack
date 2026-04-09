@@ -1,0 +1,101 @@
+/*
+ * UserRow — admin users list row.
+ *
+ * Grid: Пользователь | Роль    | Добавлен | (delete)
+ *       1fr          | 120px   | 140px    | 44px
+ *
+ * IMPORTANT: This grid-template-columns MUST match .tableHeader in
+ * AdminUsersPage.module.css for column headers to align with row cells.
+ */
+
+.userRow {
+  display: grid;
+  grid-template-columns: 1fr 120px 140px 44px;
+  align-items: center;
+  padding: 0 16px;
+  height: 52px;
+  border-bottom: 1px solid #1a1a1a;
+  background: transparent;
+  position: relative;
+}
+
+.userRow:hover {
+  background: #141414;
+}
+
+.userRow:focus-visible {
+  outline: 1px solid #7c3aed;
+  outline-offset: -1px;
+}
+
+/* ── User identity: name + email stacked ── */
+.userIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.userName {
+  font-size: 14px;
+  color: #e5e5e5;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: 11px;
+  color: #555;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Role cell ── */
+.roleCell {
+  /* RoleBadge is inline-block — no extra wrapper styling needed */
+}
+
+/* ── Date cell ── */
+.dateCell {
+  font-size: 12px;
+  color: #555;
+  font-family: 'Courier New', 'Courier', monospace;
+  white-space: nowrap;
+}
+
+/* ── Actions cell ── */
+.actionsCell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Delete button — invisible by default, revealed on row hover */
+.deleteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #555;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+}
+
+/* Reveal on parent row hover */
+.userRow:hover .deleteBtn {
+  opacity: 1;
+}
+
+.deleteBtn:hover {
+  color: #f87171;
+  background: #1a0a0a;
+}
