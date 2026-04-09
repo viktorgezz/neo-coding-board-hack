@@ -5,9 +5,11 @@ import radon.complexity as cc_radon
 
 
 class ComplexityAnalyzer:
+    """Цикломатическая сложность: Python через radon, остальные языки через lizard, bash — эвристика."""
+
     @staticmethod
     def get_python_complexity(code: str) -> int:
-        """Суммарная CC по всем функциям/методам (radon)."""
+        """Суммарная цикломатическая сложность по всем блокам кода в Python (пакет radon)."""
         if not code or not code.strip():
             return 0
         try:
@@ -18,7 +20,7 @@ class ComplexityAnalyzer:
 
     @staticmethod
     def get_universal_complexity(code: str, ext: str) -> int:
-        """CC для языков, которые понимает lizard (java, cpp, js, kt, …)."""
+        """Суммарная цикломатическая сложность по функциям для расширения `ext`, поддерживаемого lizard."""
         if not code or not code.strip():
             return 0
         file_name = f"tmp.{ext}"
@@ -30,7 +32,7 @@ class ComplexityAnalyzer:
 
     @staticmethod
     def _bash_branch_heuristic(code: str) -> int:
-        """Упрощённая оценка ветвлений для shell (lizard не используем)."""
+        """Грубая оценка ветвлений в shell по ключевым словам и операторам (lizard для sh не используется)."""
         if not code or not code.strip():
             return 0
         keywords = ("if ", "while ", "until ", "for ", "&&", "||", "case ")
@@ -38,6 +40,7 @@ class ComplexityAnalyzer:
 
     @classmethod
     def calculate(cls, code: str, lang: str) -> int:
+        """Возвращает цикломатическую сложность для языка `lang`; для bash — эвристика; неизвестный язык — 0."""
         lang_map = {
             "python": "py",
             "java": "java",

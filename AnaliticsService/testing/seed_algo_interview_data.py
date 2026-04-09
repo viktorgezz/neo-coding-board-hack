@@ -96,6 +96,7 @@ def _snapshot_times(n: int) -> list[str]:
 
 
 def build_algo_session_history() -> SessionHistory:
+    """Собирает `SessionHistory`: 50+ накопительных снепшотов Python и 12 заметок интервьюера."""
     frags = _code_fragments()
     assert len(frags) >= 50, len(frags)
     times = _snapshot_times(len(frags))
@@ -130,4 +131,5 @@ def build_algo_session_history() -> SessionHistory:
 
 
 def session_start_for_violations() -> datetime:
+    """Начало сессии (UTC) для привязки искусственных paste/tab_switch в сиде."""
     return _SESSION_START

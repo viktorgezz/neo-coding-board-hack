@@ -1,3 +1,5 @@
+"""HTTP-маршруты FastAPI: приём истории, realtime-метрики и отчёты по комнатам."""
+
 import uuid
 
 from fastapi import APIRouter, Depends
@@ -22,17 +24,19 @@ def save_history(
     history: SessionHistory,
     session: Session = Depends(get_db),
 ):
-    """Принимает данные от внешнего сервиса и сохраняет их"""
+    """Принимает историю сессии (снепшоты кода и заметки) и сохраняет её в БД для комнаты."""
     crud.save_room_history(session, idRoom, history)
     return {"message": "Data successfully imported"}
 
 @router.post("/api/v1/rooms/{idRoom}/metrics/increment-paste", tags=["Real-time Metrics"])
 def increment_paste(idRoom: uuid.UUID, session: Session = Depends(get_db)):
+    """Увеличивает счётчик вставок из буфера и пишет событие в хронологию комнаты."""
     current = crud.increment_pastes(session, idRoom)
     return {"current_pastes": current}
 
 @router.post("/api/v1/rooms/{idRoom}/metrics/increment-tab-switch", tags=["Real-time Metrics"])
 def increment_tab_switch(idRoom: uuid.UUID, session: Session = Depends(get_db)):
+    """Увеличивает счётчик смены вкладки и пишет событие в хронологию комнаты."""
     current = crud.increment_switches(session, idRoom)
     return {"current_switches": current}
 
@@ -42,6 +46,7 @@ def save_assessment(
     assessment: InterviewerAssessment,
     session: Session = Depends(get_db),
 ):
+    """Сохраняет или обновляет оценку интервьюера по комнате (шкалы и вердикт)."""
     crud.save_assessment(session, idRoom, assessment)
     return {"message": "Assessment saved"}
 
@@ -53,7 +58,7 @@ def get_report(idRoom: uuid.UUID, session: Session = Depends(get_db)):
 
 @router.get("/api/v1/rooms/{idRoom}/ai-summary", response_model=AISummaryResponse, tags=["Reports & AI"])
 def get_ai_summary(idRoom: uuid.UUID, session: Session = Depends(get_db)):
-    """ИИ-анализ (Заглушка)"""
+    """Возвращает и сохраняет заглушку AI-summary по комнате (позже — вызов LLM)."""
     # Здесь будет вызов LangChain или SDK GigaChat/YandexGPT
     summary = AISummaryResponse(
         positivePoints=["Использовал современные конструкции Kotlin"],

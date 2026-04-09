@@ -1,3 +1,5 @@
+"""CRUD-операции над комнатами, сессиями, отчётами и realtime-метриками аналитики."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -29,6 +31,7 @@ from schemas import (
 
 
 def get_or_create_room(session: Session, room_id: uuid.UUID) -> Room:
+    """Возвращает комнату по UUID или создаёт строку с нулевыми счётчиками paste/switch."""
     room = session.get(Room, room_id)
     if room is None:
         room = Room(room_id=room_id, pastes=0, switches=0)
@@ -38,6 +41,7 @@ def get_or_create_room(session: Session, room_id: uuid.UUID) -> Room:
 
 
 def _delete_assessment_report_ai(session: Session, room_id: uuid.UUID) -> None:
+    """Удаляет оценку интервьюера, candidate-report и AI-summary для комнаты (без commit)."""
     if a := session.get(InterviewerAssessmentRecord, room_id):
         session.delete(a)
     if cr := session.scalar(
@@ -49,6 +53,7 @@ def _delete_assessment_report_ai(session: Session, room_id: uuid.UUID) -> None:
 
 
 def save_room_history(session: Session, room_id: uuid.UUID, history: SessionHistory) -> None:
+    """Полностью заменяет историю сессии (снепшоты и заметки); сбрасывает отчёт/оценку/AI для комнаты."""
     get_or_create_room(session, room_id)
     _delete_assessment_report_ai(session, room_id)
     if sh := session.scalar(
@@ -87,6 +92,7 @@ def save_room_history(session: Session, room_id: uuid.UUID, history: SessionHist
 
 
 def increment_pastes(session: Session, room_id: uuid.UUID) -> int:
+    """+1 к счётчику paste, запись `RoomRealtimeEvent` с текущим временем; возвращает новое значение."""
     room = get_or_create_room(session, room_id)
     room.pastes += 1
     now = datetime.now(timezone.utc)
@@ -103,6 +109,7 @@ def increment_pastes(session: Session, room_id: uuid.UUID) -> int:
 
 
 def increment_switches(session: Session, room_id: uuid.UUID) -> int:
+    """+1 к счётчику tab_switch и событие в БД; возвращает новое значение счётчика."""
     room = get_or_create_room(session, room_id)
     room.switches += 1
     now = datetime.now(timezone.utc)
@@ -119,6 +126,7 @@ def increment_switches(session: Session, room_id: uuid.UUID) -> int:
 
 
 def save_assessment(session: Session, room_id: uuid.UUID, assessment: InterviewerAssessment) -> None:
+    """Создаёт или обновляет строку `interviewer_assessments` для комнаты."""
     get_or_create_room(session, room_id)
     row = session.get(InterviewerAssessmentRecord, room_id)
     if row is None:
@@ -141,6 +149,7 @@ def save_assessment(session: Session, room_id: uuid.UUID, assessment: Interviewe
 
 
 def save_candidate_report(session: Session, room_id: uuid.UUID, report: CandidateReport) -> None:
+    """Заменяет отчёт кандидата: summary, таймлайн, точки сложности, radar, comparative и кривую."""
     get_or_create_room(session, room_id)
     if old := session.scalar(
         select(CandidateReportRecord).where(CandidateReportRecord.room_id == room_id)
@@ -211,6 +220,7 @@ def save_candidate_report(session: Session, room_id: uuid.UUID, report: Candidat
 
 
 def save_ai_summary(session: Session, room_id: uuid.UUID, summary: AISummaryResponse) -> None:
+    """Заменяет AI-резюме и списки положительных/отрицательных пунктов для комнаты."""
     get_or_create_room(session, room_id)
     if old := session.get(AISummaryRecord, room_id):
         session.delete(old)
@@ -231,6 +241,7 @@ def save_ai_summary(session: Session, room_id: uuid.UUID, summary: AISummaryResp
 
 
 def set_room_metrics(session: Session, room_id: uuid.UUID, pastes: int, switches: int) -> None:
+    """Явно выставляет счётчики paste/switch (без добавления строк в `room_realtime_events`)."""
     room = get_or_create_room(session, room_id)
     room.pastes = pastes
     room.switches = switches

@@ -1,3 +1,5 @@
+"""Эвристическая оценка сложности исходного кода по языку (AST, парсеры, текстовые паттерны)."""
+
 import ast
 import re
 from typing import Any
@@ -32,6 +34,7 @@ _JS_NODE_WEIGHTS: dict[str, int] = {
 
 
 def _walk_estree_score(node: Any, acc: list[int]) -> None:
+    """Рекурсивно обходит ESTree (dict/list) и накапливает эвристический скор по типам узлов."""
     if node is None:
         return
     if isinstance(node, dict):
@@ -46,7 +49,7 @@ def _walk_estree_score(node: Any, acc: list[int]) -> None:
 
 
 def _parse_js_to_dict(code: str) -> dict[str, Any] | None:
-    """Script → module, tolerant + JSX."""
+    """Парсит JavaScript/JSX в словарь AST: сначала как script, при ошибке — как module (tolerant)."""
     for source_type in ("script", "module"):
         try:
             ast_root = esprima.parse(
@@ -62,9 +65,11 @@ def _parse_js_to_dict(code: str) -> dict[str, Any] | None:
 
 
 class AnalyticsEngine:
+    """Эвристическая оценка «сложности» кода по языку: AST, парсер или текстовые паттерны."""
 
     @staticmethod
     def analyze_python(code: str) -> int:
+        """Число определений функций/классов в Python-AST, умноженное на коэффициент; при ошибке парсинга — 0."""
         try:
             tree = ast.parse(code)
             return sum(1 for _ in ast.walk(tree) if isinstance(_, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef))) * 5
@@ -72,6 +77,7 @@ class AnalyticsEngine:
 
     @staticmethod
     def analyze_java(code: str) -> int:
+        """Суммирует веса методов, классов и блоков try в Java-AST (javalang); при ошибке — 0."""
         try:
             tree = javalang.parse.parse(code)
             score = 0
@@ -86,7 +92,7 @@ class AnalyticsEngine:
 
     @staticmethod
     def analyze_kotlin(code: str) -> int:
-        """Эвристика по тексту (без AST): fun, class (в т.ч. data class), when и т.д."""
+        """Эвристика по тексту (без AST): ключевые слова fun, class, interface, object, when, try, val/var."""
         if not code or not code.strip():
             return 0
         score = 0
@@ -101,6 +107,7 @@ class AnalyticsEngine:
 
     @staticmethod
     def analyze_js(code: str) -> int:
+        """Обход ESTree после esprima: функции, классы, ветвления, циклы, JSX и т.д.; пустой код — 0."""
         if not code or not code.strip():
             return 0
         tree = _parse_js_to_dict(code)
@@ -112,6 +119,7 @@ class AnalyticsEngine:
 
     @staticmethod
     def analyze_cpp(code: str) -> int:
+        """Обход AST libclang: объявления классов и функций с фиксированными весами; при ошибке — 0."""
         try:
             index = clang.cindex.Index.create()
             tu = index.parse('tmp.cpp', unsaved_files=[('tmp.cpp', code)])
@@ -124,6 +132,7 @@ class AnalyticsEngine:
 
     @staticmethod
     def analyze_bash(code: str) -> int:
+        """Число верхнеуровневых фрагментов bashlex (команды/пайпы) с фиксированным весом на фрагмент."""
         try:
             parts = bashlex.parse(code)
             score = 0
@@ -135,6 +144,7 @@ class AnalyticsEngine:
 
     @classmethod
     def get_complexity(cls, code: str, lang: str) -> int:
+        """Возвращает эвристический скор для строки `lang` (python, java, js, …); неизвестный язык — 0."""
         mapping = {
             "python": cls.analyze_python,
             "java": cls.analyze_java,

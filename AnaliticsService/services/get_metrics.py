@@ -1,3 +1,5 @@
+"""Метрики комнаты: история сессии, нарушения, сложность кода и агрегированный candidate-report."""
+
 import json
 import math
 import statistics
@@ -51,7 +53,10 @@ def _normal_cdf_std(z: float) -> float:
 
 
 class GetMetrics:
+    """Сбор метрик по комнате собеседования: сессия, нарушения, сложность кода, отчёт кандидата."""
+
     def __init__(self, session: Session, room_id: uuid.UUID):
+        """Подгружает данные сессии через `get_data` и сохраняет их в `self.data`."""
         self._session = session
         self.room_id = room_id
         self.data = self.get_data()
@@ -261,6 +266,12 @@ class GetMetrics:
 
         Ось X графика — Z-score; кривая — эталон N(0,1) для визуализации.
         percentile (при эмпирическом режиме): доля пиров с сырым скором ≤ кандидата.
+
+        Параметры:
+            population_mean, population_std — запасные μ и σ при малом числе пиров.
+            curve_x_min, curve_x_max — диапазон Z для точек колокола.
+            curve_point_count — число точек на кривой.
+            min_peer_rooms — минимум других комнат для эмпирического режима.
         """
         raw = self._candidate_raw_score()
 
@@ -328,6 +339,7 @@ class GetMetrics:
         }
 
     def _get_candidate_report_summary(self) -> dict[str, str]:
+        """Имя кандидата и вердикт из candidate_report; вердикт при отсутствии — из interviewer_assessment."""
         cr = self._session.scalar(
             select(CandidateReportRecord).where(CandidateReportRecord.room_id == self.room_id)
         )
@@ -361,6 +373,7 @@ class GetMetrics:
 
 
 def _main() -> None:
+    """CLI: печатает JSON нормализованного тренда сложности для переданного UUID комнаты (или дефолтного)."""
     from database import SessionLocal
 
     default_room = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -376,6 +389,7 @@ def _main() -> None:
         data = GetMetrics(session, room_id).normalize_complexity()
 
         def _json_default(o: object) -> str:
+            """Сериализация дат в ISO-формат для json.dumps."""
             if isinstance(o, (datetime, date)):
                 return o.isoformat()
             raise TypeError

@@ -1,3 +1,5 @@
+"""Точка входа FastAPI-приложения аналитики собеседований."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,6 +10,7 @@ from routes import router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """При старте приложения прогоняет миграции БД до head."""
     run_migrations()
     yield
 
