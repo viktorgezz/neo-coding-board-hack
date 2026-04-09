@@ -25,6 +25,10 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./AnaliticsService/.env
+    environment:
+      JWT_PUBLIC_KEY_PATH: /app/keys/public_key.pem
+    volumes:
+      - ./AnaliticsService/keys/public_key.pem:/app/keys/public_key.pem:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -41,6 +45,9 @@ services:
       - ./TasksBankService/.env
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/neo_tasks_bank
+      JWT_PUBLIC_KEY_PATH: /app/keys/public_key.pem
+    volumes:
+      - ./AnaliticsService/keys/public_key.pem:/app/keys/public_key.pem:ro
     ports:
       - "8001:8000"
     depends_on:
