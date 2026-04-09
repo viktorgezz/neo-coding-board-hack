@@ -44,7 +44,7 @@ interface TaskRead {
 
 const TASKS_BANK_BASE_URL = (
   import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
-  ?? 'http://72.56.248.147:8001'
+  ?? '/tasks-bank-api'
 ).replace(/\/$/, '');
 
 export default function NotesPanel({

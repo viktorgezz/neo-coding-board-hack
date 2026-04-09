@@ -183,7 +183,12 @@ export const router = createBrowserRouter([
     path: '*',
     element: wrap(<NotFoundPage />),
   },
-]);
+], {
+  future: {
+    // v7 flag supported by runtime; missing in current installed type defs.
+    v7_startTransition: true,
+  },
+} as never);
 
 /**
  * Thin wrapper so RoleRedirect can read auth state via a hook.
