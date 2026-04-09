@@ -14,6 +14,7 @@ from schemas import (
     SessionHistory,
 )
 from services.get_metrics import GetMetrics
+from services.interview_summarizer import InterviewSummarizer
 
 router = APIRouter()
 
@@ -58,12 +59,7 @@ def get_report(idRoom: uuid.UUID, session: Session = Depends(get_db)):
 
 @router.get("/api/v1/rooms/{idRoom}/ai-summary", response_model=AISummaryResponse, tags=["Reports & AI"])
 def get_ai_summary(idRoom: uuid.UUID, session: Session = Depends(get_db)):
-    """Возвращает и сохраняет заглушку AI-summary по комнате (позже — вызов LLM)."""
-    # Здесь будет вызов LangChain или SDK GigaChat/YandexGPT
-    summary = AISummaryResponse(
-        positivePoints=["Использовал современные конструкции Kotlin"],
-        negativePoints=["Подозрение на плагиат: резкий скачок сложности при Paste"],
-        aiRecommendation="Не рекомендуется к найму из-за аномального поведения."
-    )
+    """Генерирует AI-резюме по candidate-report комнаты и сохраняет его в БД."""
+    summary = InterviewSummarizer().get_summary_by_room_id(session, idRoom)
     crud.save_ai_summary(session, idRoom, summary)
     return summary
