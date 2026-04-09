@@ -22,12 +22,16 @@ router = APIRouter()
 require_analytics_access = require_roles("HR", "INTERVIEWER")
 
 
-@router.post("/api/v1/rooms/{idRoom}/history", status_code=201, tags=["Data Ingestion"])
+@router.post(
+    "/api/v1/rooms/{idRoom}/history",
+    status_code=201,
+    tags=["Data Ingestion"],
+    security=[],
+)
 def save_history(
     idRoom: uuid.UUID,
     history: SessionHistory,
     session: Session = Depends(get_db),
-    _: CurrentUser = Depends(require_analytics_access),
 ):
     """Принимает историю сессии (снепшоты кода и заметки) и сохраняет её в БД для комнаты."""
     crud.save_room_history(session, idRoom, history)
