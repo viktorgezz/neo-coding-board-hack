@@ -174,29 +174,29 @@ $$
 
 Если в БД достаточно peer-комнат (минимум 2), параметры берутся эмпирически:
 
-`μ = mean(raw_peer),  σ = std_pop(raw_peer)`
+<p><b>μ</b> = mean(raw<sub>peer</sub>), <b>σ</b> = std<sub>pop</sub>(raw<sub>peer</sub>)</p>
 
-`z = (raw_candidate - μ) / σ`
+<p><b>z</b> = (raw<sub>candidate</sub> - μ) / σ</p>
 
 Перцентиль в эмпирическом режиме:
 
-`percentile = 100 * ( count(s in peer, where s <= raw_candidate) / count(peer) )`
+<p><b>percentile</b> = 100 × ( count(s ∈ peer, where s ≤ raw<sub>candidate</sub>) / count(peer) )</p>
 
 Если peer-данных мало, используются fallback-параметры:
-- `μ = 28.0`
-- `σ = 10.0`
+- <b>μ</b> = 28.0
+- <b>σ</b> = 10.0
 
 И перцентиль считается через CDF стандартного нормального распределения:
 
-`Φ(z) = 0.5 * (1 + erf(z / sqrt(2)))`
+<p><b>Φ(z)</b> = 0.5 × (1 + erf(z / √2))</p>
 
-`percentile = 100 * Φ(z)`
+<p><b>percentile</b> = 100 × Φ(z)</p>
 
 Кривая `distributionCurve` строится как нормализованная плотность `N(0,1)`:
 
-`φ(x) = (1 / sqrt(2π)) * exp(-x² / 2)`
+<p><b>φ(x)</b> = (1 / √(2π)) × e<sup>-x²/2</sup></p>
 
-`y_norm(x) = φ(x) / max_x(φ(x))`
+<p><b>y<sub>norm</sub>(x)</b> = φ(x) / max<sub>x</sub>(φ(x))</p>
 
 ### 4.5 Radar-метрики
 
