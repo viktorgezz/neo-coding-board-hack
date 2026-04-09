@@ -70,6 +70,15 @@ services:
       postgres:
         condition: service_healthy
 
+  ws-code-service:
+    container_name: neo_ws_code_service
+    build:
+      context: ./WSCodeService
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
 
