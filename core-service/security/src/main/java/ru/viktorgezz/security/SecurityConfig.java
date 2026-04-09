@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -40,7 +41,9 @@ public class SecurityConfig {
             "/api/v1/auth/register",
             "/api/v1/auth/refresh",
             "/api/v1/ui/auth/**",
-            "/api/v1/candidate/register"
+            "/api/v1/candidate/register",
+            "/api/v1/rooms/register/**",
+            "/api/v1/rooms/join-info/**"
     };
 
     private static final String[] SWAGGER_URLS = {
@@ -56,6 +59,16 @@ public class SecurityConfig {
             "/configuration/security"
     };
 
+    private static final String[] INTERVIEWER_URLS = {
+            "/api/v1/rooms",
+            "/api/v1/rooms/start/**",
+            "/api/v1/rooms/finish/**",
+    };
+
+    private static final String[] HR_URLS = {
+            "/api/v1/rooms/all"
+    };
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
@@ -68,6 +81,9 @@ public class SecurityConfig {
                         auth
                                 .requestMatchers(PUBLIC_URLS).permitAll()
                                 .requestMatchers(SWAGGER_URLS).permitAll()
+                                .requestMatchers(HR_URLS).hasAnyRole("HR", "SUPERUSER")
+                                .requestMatchers(INTERVIEWER_URLS).hasAnyRole("INTERVIEWER", "SUPERUSER")
+                                .requestMatchers(HttpMethod.DELETE, "/api/v1/rooms/*").hasAnyRole("HR", "SUPERUSER")
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
