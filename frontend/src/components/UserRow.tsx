@@ -22,8 +22,8 @@ export interface AdminUser {
   id:        string;
   name:      string;
   email:     string;
-  role:      'HR' | 'INTERVIEWER';
-  createdAt: string; // ISO date-time
+  role:      'HR' | 'INTERVIEWER' | 'SUPERUSER';
+  createdAt: string | null; // ISO date-time (на старых записях может отсутствовать)
 }
 
 export interface UserRowProps {
@@ -57,7 +57,7 @@ const UserRow = memo(function UserRow({
       </div>
 
       <span className={styles.dateCell}>
-        {formatDate(user.createdAt)}
+        {user.createdAt ? formatDate(user.createdAt) : '—'}
       </span>
 
       <div className={styles.actionsCell}>

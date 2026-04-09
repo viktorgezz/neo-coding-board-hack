@@ -5,7 +5,7 @@
  *   1. codeResolution === 'PASSED'   → green  "ПРОЙДЕНО"
  *   2. codeResolution === 'REJECTED' → red    "НЕ ПРОЙДЕНО"
  *   3. status === 'CREATED'          → amber "ОЖИДАНИЕ"
- *   4. status === 'ACTIVE'           → dark + green dot + "ACTIVE"
+ *   4. status === 'ACTIVE'           → dark + green dot + "АКТИВНО"
  *   5. status === 'FINISHED'         → dark gray "ЗАВЕРШЕНО"
  *
  * codeResolution is optional — the list API may not include it.
@@ -54,7 +54,7 @@ const VerdictBadge = memo(function VerdictBadge({
     return (
       <span className={`${styles.badge} ${styles.badgeActive}`}>
         <span className={styles.activeDot} />
-        ACTIVE
+        АКТИВНО
       </span>
     );
   }

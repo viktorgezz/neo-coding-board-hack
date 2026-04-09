@@ -347,6 +347,13 @@ export default defineConfig({
         changeOrigin: true,
         rewrite:      (path) => path.replace(/^\/tasks-api/, ''),
       },
+
+      // ── Analytics & AI (history, metrics, assessment, reports) ─────────
+      '/analytics-api': {
+        target:       'http://111.88.127.60:8000',
+        changeOrigin: true,
+        rewrite:      (path) => path.replace(/^\/analytics-api/, ''),
+      },
     },
   },
 });

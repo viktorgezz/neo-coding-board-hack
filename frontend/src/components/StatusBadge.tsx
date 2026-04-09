@@ -12,6 +12,12 @@ export interface StatusBadgeProps {
   status: 'CREATED' | 'ACTIVE' | 'FINISHED';
 }
 
+const STATUS_LABEL_RU: Record<StatusBadgeProps['status'], string> = {
+  CREATED:  'ОЖИДАНИЕ',
+  ACTIVE:   'АКТИВНО',
+  FINISHED: 'ЗАВЕРШЕНО',
+};
+
 const StatusBadge = memo(function StatusBadge({ status }: StatusBadgeProps) {
   const variant =
     status === 'ACTIVE'   ? styles.badgeActive
@@ -20,7 +26,7 @@ const StatusBadge = memo(function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span className={`${styles.statusBadge} ${variant}`}>
       <span className={styles.dot} />
-      {status}
+      {STATUS_LABEL_RU[status]}
     </span>
   );
 });
