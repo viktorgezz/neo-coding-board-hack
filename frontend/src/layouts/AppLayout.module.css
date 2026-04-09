@@ -1,0 +1,234 @@
+/*
+ * AppLayout styles — CSS Modules.
+ *
+ * Naming mirrors the DOM spec exactly: appShell, sidebar, sidebarTop,
+ * sidebarNav, sidebarBottom, userInfo, userName, userRole, logoutBtn,
+ * mainContent, navItem, navItemActive.
+ *
+ * --sidebar-width is a CSS custom property so any future resize can be done
+ * in one place. Mobile overlay uses position:fixed at this same width.
+ */
+
+:root {
+  --sidebar-width: 220px;
+  --sidebar-bg: #0a0a0a;
+  --sidebar-border: #1a1a1a;
+  --nav-active-accent: #7c3aed;
+}
+
+/* ── Shell ────────────────────────────────────────────────────────────── */
+
+.appShell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #111;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  overflow-y: auto;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+  /* NO transition — spec requires instant state changes */
+}
+
+.sidebarTop {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--sidebar-border);
+  flex-shrink: 0;
+}
+
+.sidebarTop span {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #555;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+}
+
+.sidebarNav {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebarBottom {
+  padding: 12px;
+  border-top: 1px solid var(--sidebar-border);
+  flex-shrink: 0;
+}
+
+/* ── User info ────────────────────────────────────────────────────────── */
+
+.userInfo {
+  margin-bottom: 8px;
+  min-width: 0;
+}
+
+.userName {
+  display: block;
+  font-size: 13px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #e5e5e5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  display: block;
+  font-size: 11px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #555;
+  margin-top: 2px;
+}
+
+/* ── Logout button ────────────────────────────────────────────────────── */
+
+.logoutBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #555;
+  line-height: 1;
+}
+
+.logoutBtn:hover {
+  color: #e5e5e5;
+}
+
+/* ── Nav items ────────────────────────────────────────────────────────── */
+
+/*
+ * The 2px transparent border-left on every item (default and hover) reserves
+ * the same horizontal space as the active state's colored border, preventing
+ * any layout shift when an item becomes active.
+ * Effective left padding: 2px (border) + 8px (padding-left) = 10px,
+ * which equals the 10px right padding — visually balanced.
+ */
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 450; /* variable-font only; falls back to 400 */
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #888;
+  background: transparent;
+  /* NO transition property — instant color/background change */
+}
+
+.navItem:hover {
+  background: #141414;
+  color: #e5e5e5;
+}
+
+.navItemActive {
+  background: #141414;
+  color: #e5e5e5;
+  border-left-color: var(--nav-active-accent);
+}
+
+/* ── Main content ─────────────────────────────────────────────────────── */
+
+.mainContent {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* ── Mobile top bar ───────────────────────────────────────────────────── */
+
+.mobileTopBar {
+  display: none; /* hidden on desktop; shown via media query below */
+  height: 44px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--sidebar-border);
+}
+
+.mobileTopBarWordmark {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #555;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.mobileMenuBtn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.mobileMenuBtn:hover {
+  color: #e5e5e5;
+}
+
+/* ── Mobile overlay ───────────────────────────────────────────────────── */
+
+.mobileBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sidebarOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  height: 100vh;
+  /* NO transition — spec: no animate sidebar open/close */
+}
+
+/* ── Responsive breakpoint ────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+  .appShell {
+    flex-direction: column;
+  }
+
+  /* Hide the persistent sidebar; replaced by the overlay when needed */
+  .sidebar {
+    display: none;
+  }
+
+  /* Show the top bar */
+  .mobileTopBar {
+    display: flex;
+  }
+}

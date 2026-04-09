@@ -1,0 +1,65 @@
+/*
+ * SessionRow — 52px clickable row in the interviewer sessions list.
+ *
+ * Grid: [name + badge] [date] [duration]
+ * Three-column layout with explicit auto sizing for the right two columns
+ * keeps the name column flexible without any hard widths.
+ */
+
+.sessionRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  padding: 0 16px;
+  height: 52px;
+  background: transparent;
+  border-bottom: 1px solid #1a1a1a;
+  cursor: pointer;
+  /* NO transition — instant background change per spec */
+}
+
+.sessionRow:hover {
+  background: #141414;
+}
+
+/* Keyboard focus — visible ring for accessibility without browser default */
+.sessionRow:focus-visible {
+  outline: 1px solid #7c3aed;
+  outline-offset: -1px;
+}
+
+/* Left cell: candidate name + status badge */
+.rowLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* allow flex children to shrink */
+}
+
+.candidateName {
+  font-size: 14px;
+  color: #e5e5e5;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Date cell — monospace, right-padded to give breathing room before duration */
+.rowDate {
+  font-size: 12px;
+  color: #555;
+  font-family: 'Courier New', 'Courier', monospace;
+  padding-right: 24px;
+  white-space: nowrap;
+}
+
+/* Duration cell — right-aligned, fixed min-width so column never jumps */
+.rowDuration {
+  font-size: 12px;
+  color: #555;
+  font-family: 'Courier New', 'Courier', monospace;
+  text-align: right;
+  min-width: 40px;
+  white-space: nowrap;
+}

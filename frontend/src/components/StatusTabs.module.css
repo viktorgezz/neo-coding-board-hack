@@ -1,0 +1,34 @@
+.statusTabs {
+  display: inline-flex;
+  background: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tabBtn {
+  height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: transparent;
+  color: #555;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  /* NO transition — instant color change per spec */
+}
+
+/* Active tab — data-active="true" set by the component */
+.tabBtn[data-active='true'] {
+  background: #1a1a1a;
+  color: #e5e5e5;
+}
+
+.tabBtn:hover:not([data-active='true']) {
+  color: #888;
+}

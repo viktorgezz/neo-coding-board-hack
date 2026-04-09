@@ -1,0 +1,150 @@
+/* ── Page root ──────────────────────────────────────────────────────────── */
+.adminPage {
+  padding: 32px;
+  max-width: 960px;
+  margin: 0 auto;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Page header: title+subtitle (left) + create button (right) ──────────── */
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 0;
+}
+
+/* Amber subtitle — visible reminder that the API is provisional */
+.pageSubtitle {
+  font-size: 11px;
+  color: #f59e0b;
+  margin: 2px 0 0;
+}
+
+.createBtn {
+  height: 34px;
+  padding: 0 14px;
+  background: #7c3aed;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.createBtn:hover {
+  background: #6d28d9;
+}
+
+/* ── Table header ────────────────────────────────────────────────────────── */
+/*
+ * grid-template-columns MUST match .userRow in UserRow.module.css
+ * and .skeletonRow below for column alignment.
+ */
+.tableHeader {
+  display: grid;
+  grid-template-columns: 1fr 120px 140px 44px;
+  align-items: center;
+  padding: 0 16px;
+  height: 36px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.colHeader {
+  font-size: 11px;
+  font-weight: 500;
+  color: #555;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── Table body ──────────────────────────────────────────────────────────── */
+.tableBody {
+  min-height: 200px;
+}
+
+/* ── Skeleton rows ───────────────────────────────────────────────────────── */
+/* Same grid as .tableHeader and UserRow — columns must stay in sync */
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 1fr 120px 140px 44px;
+  align-items: center;
+  padding: 0 16px;
+  height: 52px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.skeletonCell {
+  height: 12px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    #1a1a1a 25%,
+    #242424 50%,
+    #1a1a1a 75%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.emptyState p {
+  font-size: 14px;
+  color: #555;
+  margin: 0;
+}
+
+/* ── Error state ─────────────────────────────────────────────────────────── */
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 12px;
+  text-align: center;
+}
+
+.errorState p {
+  font-size: 14px;
+  color: #f87171;
+  margin: 0;
+}
+
+.retryBtn {
+  background: none;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #e5e5e5;
+  font-size: 13px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.retryBtn:hover {
+  background: #141414;
+}

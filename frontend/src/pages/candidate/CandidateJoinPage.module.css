@@ -1,0 +1,209 @@
+/*
+ * CandidateJoinPage styles — CSS Modules.
+ *
+ * Design tokens shared with LoginPage:
+ *   #0a0a0a bg, #111 card, #1f1f1f border, #7c3aed focus accent,
+ *   #0d0d0d input bg, #2a2a2a input border, #e5e5e5 text, #888 muted text,
+ *   #f87171 error red.
+ *
+ * Card is narrower than LoginPage (320px max vs 360px) — this is intentional.
+ * No animations anywhere — render in place.
+ */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Page root ────────────────────────────────────────────────────────── */
+
+.joinRoot {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #0a0a0a;
+  padding: 24px;
+  box-sizing: border-box;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+
+.joinCard {
+  width: 100%;
+  max-width: 320px;
+  padding: 28px 24px;
+  background: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 10px;
+  /* No box-shadow. No entrance animation. */
+}
+
+/* ── Vacancy label area ───────────────────────────────────────────────── */
+
+/*
+ * Skeleton — 120×14px static placeholder shown during the join-info fetch.
+ * No animation per spec ("static placeholder"). Replaces only this area —
+ * the title and form remain visible while loading.
+ */
+.vacancySkeleton {
+  width: 120px;
+  height: 14px;
+  background: #1f1f1f;
+  border-radius: 4px;
+}
+
+.vacancyPrefix {
+  display: block;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.vacancyName {
+  display: block;
+  font-size: 13px;
+  color: #888;
+  font-weight: 500;
+}
+
+/* ── Title ────────────────────────────────────────────────────────────── */
+
+.joinTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 16px 0 20px;
+  line-height: 1;
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────── */
+
+.joinForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
+.input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #e5e5e5;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  /* NO transition — instant border color change */
+}
+
+.input:focus {
+  border-color: #7c3aed;
+}
+
+.input::placeholder {
+  color: #444;
+}
+
+/* ── Submit error ─────────────────────────────────────────────────────── */
+
+/* Conditionally rendered (not always in DOM) — belongs only to submit path */
+.submitError {
+  font-size: 13px;
+  color: #f87171;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* ── Submit button ────────────────────────────────────────────────────── */
+
+.submitBtn {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 36px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  /* NO transition */
+}
+
+.submitBtn:hover {
+  background: #6d28d9;
+}
+
+/* Active submit while request is in-flight — keep visual size, suppress clicks */
+.submitBtnLoading {
+  pointer-events: none;
+}
+
+/* Disabled when form is not ready (empty input, loading, or dead-end error) */
+.submitBtnDisabled {
+  opacity: 0.4;
+  pointer-events: none;
+  /* Using opacity + pointer-events rather than the `disabled` attribute so
+     the button keeps its size/tab-stop and hover doesn't activate */
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────── */
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ── Dead-end state ───────────────────────────────────────────────────── */
+
+/*
+ * Shown when the room doesn't exist, is already FINISHED, or the join-info
+ * fetch fails. Replaces the entire card content. No retry button — candidate
+ * must close the tab. This is intentional: broken/stale links should not loop.
+ */
+.deadEnd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.deadEndIcon {
+  font-size: 24px;
+  color: #f87171;
+  line-height: 1;
+}
+
+.deadEndMessage {
+  font-size: 14px;
+  color: #888;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}

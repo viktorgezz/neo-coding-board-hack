@@ -1,0 +1,219 @@
+/*
+ * CreateInterviewPage styles — CSS Modules.
+ *
+ * Two visual phases: form (sparse, focused) and success (adds URL block + CTA).
+ * No card borders in the form phase — content floats on the page background.
+ */
+
+/* ── Page shell ───────────────────────────────────────────────────────── */
+
+.createPage {
+  padding: 40px 32px;
+  max-width: 480px;
+  margin: 0 auto;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Page header ──────────────────────────────────────────────────────── */
+
+.pageHeader {
+  margin-bottom: 32px;
+}
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 0;
+}
+
+.pageSubtitle {
+  font-size: 13px;
+  color: #555;
+  margin: 4px 0 0 0;
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────── */
+
+.createForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Field group — opacity dims when inputs are disabled (success phase) */
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* opacity is set via inline style dynamically */
+}
+
+.label {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+}
+
+.input {
+  height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  color: #e5e5e5;
+  background: #0d0d0d;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input::placeholder {
+  color: #3a3a3a;
+}
+
+.input:focus {
+  border-color: #7c3aed;
+}
+
+.input:disabled {
+  cursor: not-allowed;
+}
+
+/* Inline error — between the last field and the submit button */
+.formError {
+  font-size: 13px;
+  color: #f87171;
+  margin: 0;
+}
+
+/* Submit button */
+.submitBtn {
+  height: 36px;
+  width: 100%;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.submitBtn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Inline spinner — same token as LoginPage */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Success block ────────────────────────────────────────────────────── */
+
+.successBlock {
+  margin-top: 28px;
+}
+
+.successLabel {
+  font-size: 12px;
+  color: #888;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+/* Code-block-style URL container */
+.urlBlock {
+  display: flex;
+  align-items: center;
+  background: #0d0d0d;
+  border: 1px solid #1f1f1f;
+  border-radius: 6px;
+  padding: 0 12px;
+  height: 40px;
+  gap: 8px;
+}
+
+.urlText {
+  font-family: 'Courier New', 'Courier', monospace;
+  font-size: 12px;
+  color: #888;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.copyBtn {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.copyBtn:hover {
+  color: #e5e5e5;
+}
+
+/* "Скопировано!" state — green confirmation */
+.copyBtnCopied {
+  color: #22c55e;
+}
+
+.copyBtnCopied:hover {
+  color: #22c55e;
+}
+
+.successHint {
+  font-size: 12px;
+  color: #555;
+  margin: 8px 0 0 0;
+}
+
+/* Primary CTA — appears only in success phase */
+.startBtn {
+  margin-top: 20px;
+  height: 40px;
+  width: 100%;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.startBtn:hover {
+  background: #6d28d9;
+}

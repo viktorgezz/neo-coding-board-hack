@@ -1,0 +1,56 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+/* ── Numbered circle ──────────────────────────────────────────────────── */
+
+.circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Active step — currently visible */
+.circleActive {
+  background: #7c3aed;
+  color: #fff;
+}
+
+/* Completed step — already passed */
+.circleCompleted {
+  background: #1a1a1a;
+  color: #22c55e;
+}
+
+/* Future step — not yet reached */
+.circleFuture {
+  background: #1a1a1a;
+  color: #555;
+}
+
+/* ── Connector line between circles ──────────────────────────────────── */
+
+.line {
+  width: 40px;
+  height: 2px;
+  flex-shrink: 0;
+}
+
+.lineInactive {
+  background: #1a1a1a;
+}
+
+.lineActive {
+  background: #7c3aed;
+}
