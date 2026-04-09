@@ -33,10 +33,10 @@ const ROLE_HOME: Record<AuthRole, string> = {
 };
 
 const DEMO_ACCOUNTS = [
-  { role: 'admin', email: 'admin@neo.local', password: 'admin123' },
-  { role: 'hr', email: 'hr@neo.local', password: 'hr123' },
-  { role: 'interviewer', email: 'interviewer@neo.local', password: 'interviewer123' },
-  { role: 'candidate', email: 'candidate@neo.local', password: 'candidate123' },
+  { role: 'admin', login: 'admin@neo.local', password: 'admin123' },
+  { role: 'hr', login: 'hr@neo.local', password: 'hr123' },
+  { role: 'interviewer', login: 'interviewer@neo.local', password: 'interviewer123' },
+  { role: 'candidate', login: 'candidate@neo.local', password: 'candidate123' },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ export default function LoginPage() {
   const { isAuthenticated, role, login } = useAuth();
   const navigate = useNavigate();
 
-  const [email,     setEmail]     = useState('');
+  const [username, setUsername] = useState('');
   const [password,  setPassword]  = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error,     setError]     = useState<string | null>(null);
@@ -74,7 +74,7 @@ export default function LoginPage() {
       // login() POSTs to /api/v1/auth/login, decodes the JWT, updates context
       // state, and returns the decoded role — we never call useAuth() again
       // inside this async callback (Rules of Hooks).
-      const loggedInRole = await login(email, password);
+      const loggedInRole = await login(username, password);
       navigate(ROLE_HOME[loggedInRole], { replace: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Authentication failed';
@@ -93,19 +93,19 @@ export default function LoginPage() {
 
         <form className={styles.loginForm} onSubmit={(e) => { void handleSubmit(e); }}>
 
-          {/* Email */}
+          {/* Login — plain text, no email validation (backend accepts username or email) */}
           <div className={styles.fieldGroup}>
-            <label htmlFor="login-email" className={styles.label}>
-              Email
+            <label htmlFor="login-username" className={styles.label}>
+              Логин
             </label>
             <input
-              id="login-email"
-              type="email"
-              autoComplete="email"
-              placeholder="you@company.com"
+              id="login-username"
+              type="text"
+              autoComplete="username"
+              placeholder="interviewer или interviewer@test.ru"
               className={styles.input}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
           </div>
@@ -159,7 +159,7 @@ export default function LoginPage() {
             {DEMO_ACCOUNTS.map((item) => (
               <li key={item.role} className={styles.demoItem}>
                 <span className={styles.demoRole}>{item.role}</span>
-                <span className={styles.demoEmail}>{item.email}</span>
+                <span className={styles.demoLogin}>{item.login}</span>
                 <span className={styles.demoPassword}>{item.password}</span>
               </li>
             ))}

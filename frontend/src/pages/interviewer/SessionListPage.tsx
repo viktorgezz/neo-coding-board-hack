@@ -9,8 +9,8 @@
  * and deep-linking to ?page=3 works without any extra logic.
  *
  * Row navigation:
- *   ACTIVE   → /interviewer/sessions/:id       (live room)
- *   FINISHED → /interviewer/sessions/:id/report (historical report)
+ *   CREATED / ACTIVE → /interviewer/sessions/:id       (live room)
+ *   FINISHED         → /interviewer/sessions/:id/report (historical report)
  *
  * Retry strategy: retryCount is a useState (not useRef) so incrementing it
  * triggers the fetch useEffect as a dependency. useRef does NOT trigger effects.
@@ -35,9 +35,16 @@ interface PageInfo {
   totalPages:    number;
 }
 
+// Spring Boot returns Page fields at root level, older mock used nested "page"
 interface RoomListResponse {
-  content: RoomSummary[];
-  page:    PageInfo;
+  content:       RoomSummary[];
+  // flat (real Spring Page)
+  totalPages?:   number;
+  totalElements?: number;
+  size?:         number;
+  number?:       number;
+  // nested (mock format)
+  page?: PageInfo;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +107,14 @@ export default function SessionListPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as RoomListResponse;
         setRooms(data.content);
-        setPageInfo(data.page);
+        // Normalise flat Spring Page vs nested mock page
+        const pi: PageInfo = data.page ?? {
+          totalPages:    data.totalPages    ?? 1,
+          totalElements: data.totalElements ?? data.content.length,
+          size:          data.size          ?? 10,
+          number:        data.number        ?? 0,
+        };
+        setPageInfo(pi);
       } catch {
         setError('Не удалось загрузить список сессий.');
       } finally {
@@ -116,7 +130,7 @@ export default function SessionListPage() {
   // ── Callbacks ────────────────────────────────────────────────────────────
 
   const handleRowClick = useCallback((room: RoomSummary) => {
-    if (room.status === 'ACTIVE') {
+    if (room.status === 'ACTIVE' || room.status === 'CREATED') {
       navigate(`/interviewer/sessions/${room.idRoom}`);
     } else {
       navigate(`/interviewer/sessions/${room.idRoom}/report`);

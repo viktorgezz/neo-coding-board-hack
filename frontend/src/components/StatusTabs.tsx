@@ -1,7 +1,7 @@
 /**
  * StatusTabs — segmented control for filtering interview sessions by status.
  *
- * Always shows all three options (Все / Активные / Завершённые).
+ * Always shows all options (Все / Созданы / Активные / Завершённые).
  * Active tab uses data-active="true" attribute targeted by CSS — no conditional
  * class name needed, avoids string concatenation in the JSX.
  *
@@ -11,10 +11,11 @@
 import { memo } from 'react';
 import styles from './StatusTabs.module.css';
 
-export type StatusFilter = 'ALL' | 'ACTIVE' | 'FINISHED';
+export type StatusFilter = 'ALL' | 'CREATED' | 'ACTIVE' | 'FINISHED';
 
 export const STATUS_TABS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
   { value: 'ALL',      label: 'Все'         },
+  { value: 'CREATED',  label: 'Созданы'     },
   { value: 'ACTIVE',   label: 'Активные'    },
   { value: 'FINISHED', label: 'Завершённые' },
 ];

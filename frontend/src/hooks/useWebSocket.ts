@@ -203,8 +203,14 @@ export function useWebSocket({
             headers: { Authorization: `Bearer ${token}` },
           });
           if (res.ok) {
-            const data = await res.json() as { textContent: string; idLanguage: string };
-            setLiveCode({ textContent: data.textContent, idParticipant: null });
+            // Real API uses textCode/language; mock used textContent/idLanguage.
+            // Accept both variants for backwards-compatibility.
+            const raw = await res.json() as {
+              textContent?: string; textCode?: string;
+              idLanguage?: string; language?: string;
+            };
+            const text = raw.textContent ?? raw.textCode ?? '';
+            setLiveCode({ textContent: text, idParticipant: null });
           }
         } catch {
           // Intentionally swallow — non-fatal, WS stream covers live updates

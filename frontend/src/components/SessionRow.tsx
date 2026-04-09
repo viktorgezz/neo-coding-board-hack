@@ -17,7 +17,7 @@ import styles from './SessionRow.module.css';
 export interface RoomSummary {
   idRoom:        string;
   nameCandidate: string | null;
-  status:        'ACTIVE' | 'FINISHED';
+  status:        'CREATED' | 'ACTIVE' | 'FINISHED';
   dateStart:     string;
   dateEnd:       string | null;
   timeOffset:    string;

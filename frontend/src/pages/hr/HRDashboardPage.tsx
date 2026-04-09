@@ -38,7 +38,7 @@ import styles from './HRDashboardPage.module.css';
 // Constants — defined outside component, stable references
 // ---------------------------------------------------------------------------
 
-const VALID_STATUS_FILTERS: ReadonlyArray<StatusFilter> = ['ALL', 'ACTIVE', 'FINISHED'];
+const VALID_STATUS_FILTERS: ReadonlyArray<StatusFilter> = ['ALL', 'CREATED', 'ACTIVE', 'FINISHED'];
 
 /** Column definitions — used for header rendering. Widths match the CSS grid. */
 const COLUMNS = [
@@ -64,8 +64,12 @@ interface PageInfo {
 }
 
 interface RoomListResponse {
-  content: HRRoomSummary[];
-  page:    PageInfo;
+  content:        HRRoomSummary[];
+  totalPages?:    number;
+  totalElements?: number;
+  size?:          number;
+  number?:        number;
+  page?: PageInfo;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,7 +167,13 @@ export default function HRDashboardPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as RoomListResponse;
         setRooms(data.content);
-        setPageInfo(data.page);
+        const pi: PageInfo = data.page ?? {
+          totalPages:    data.totalPages    ?? 1,
+          totalElements: data.totalElements ?? data.content.length,
+          size:          data.size          ?? 15,
+          number:        data.number        ?? 0,
+        };
+        setPageInfo(pi);
       } catch {
         setError('Не удалось загрузить список кандидатов.');
       } finally {

@@ -23,7 +23,12 @@ type Difficulty = 'easy' | 'medium' | 'hard';
 
 // ── Axios instance ─────────────────────────────────────────────────────────────
 
-const api = axios.create({ baseURL: 'http://72.56.248.147:8001' });
+const TASKS_BANK_BASE_URL = (
+  import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
+  ?? '/tasks-api'
+).replace(/\/$/, '');
+
+const api = axios.create({ baseURL: TASKS_BANK_BASE_URL });
 
 // ── API hooks ──────────────────────────────────────────────────────────────────
 
@@ -316,10 +321,8 @@ export default function TaskBankManagePage() {
   // ── Task form state
   const [taskTitle, setTaskTitle]         = useState('');
   const [taskStatement, setTaskStatement] = useState('');
-  const [taskDifficulty, setTaskDifficulty] = useState<Difficulty>('easy');
-  const [taskCategoryId, setTaskCategoryId] = useState('');
 
-  // ── Filter state
+  // ── Filter state (also used as category/difficulty when adding a task)
   const [filterCategory,   setFilterCategory]   = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('');
 
@@ -343,15 +346,15 @@ export default function TaskBankManagePage() {
 
   function handleAddTask(e: React.FormEvent) {
     e.preventDefault();
-    if (!taskTitle.trim() || !taskCategoryId) return;
+    if (!taskTitle.trim() || !filterCategory) return;
     createTask.mutate(
       {
         title: taskTitle.trim(),
         statement: taskStatement.trim(),
-        difficulty: taskDifficulty,
-        category_id: Number(taskCategoryId),
+        difficulty: (filterDifficulty as Difficulty) || 'easy',
+        category_id: Number(filterCategory),
       },
-      { onSuccess: () => { setTaskTitle(''); setTaskStatement(''); setTaskDifficulty('easy'); setTaskCategoryId(''); } },
+      { onSuccess: () => { setTaskTitle(''); setTaskStatement(''); } },
     );
   }
 
@@ -405,8 +408,8 @@ export default function TaskBankManagePage() {
         <div className={styles.card}>
           <p className={styles.sectionLabel}>Задачи</p>
 
-          {/* Filters */}
-          <div className={styles.row} style={{ marginBottom: 16 }}>
+          {/* Filters — also determine category/difficulty for new tasks */}
+          <div className={styles.row} style={{ marginBottom: 4 }}>
             <select className={styles.select} value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="">Все категории</option>
               {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -418,6 +421,11 @@ export default function TaskBankManagePage() {
               <option value="hard">Сложная</option>
             </select>
           </div>
+          <p className={styles.filterHint}>
+            {filterCategory
+              ? `Новая задача → ${cats.find((c) => String(c.id) === filterCategory)?.name ?? '…'}, ${filterDifficulty ? DIFFICULTY_LABEL[filterDifficulty as Difficulty] : 'Лёгкая'}`
+              : 'Выберите категорию, чтобы добавить задачу'}
+          </p>
 
           {/* Add task form */}
           <form onSubmit={handleAddTask} className={styles.addForm} style={{ marginBottom: 16 }}>
@@ -427,6 +435,7 @@ export default function TaskBankManagePage() {
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
               required
+              disabled={!filterCategory}
             />
             <textarea
               className={`${styles.input} ${styles.textarea}`}
@@ -434,28 +443,10 @@ export default function TaskBankManagePage() {
               value={taskStatement}
               onChange={(e) => setTaskStatement(e.target.value)}
               style={{ marginTop: 8 }}
+              disabled={!filterCategory}
             />
-            <div className={styles.row} style={{ marginTop: 8, gap: 8 }}>
-              <select
-                className={styles.select}
-                value={taskDifficulty}
-                onChange={(e) => setTaskDifficulty(e.target.value as Difficulty)}
-                required
-              >
-                <option value="easy">Лёгкая</option>
-                <option value="medium">Средняя</option>
-                <option value="hard">Сложная</option>
-              </select>
-              <select
-                className={styles.select}
-                value={taskCategoryId}
-                onChange={(e) => setTaskCategoryId(e.target.value)}
-                required
-              >
-                <option value="">Категория</option>
-                {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <button className={styles.btnAdd} type="submit" disabled={createTask.isPending}>
+            <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+              <button className={styles.btnAdd} type="submit" disabled={createTask.isPending || !filterCategory}>
                 {createTask.isPending ? '...' : 'Добавить'}
               </button>
             </div>

@@ -23,6 +23,12 @@
   color: var(--color-failed);
 }
 
+/* status: CREATED */
+.badgeCreated {
+  border: 1px solid #eab308;
+  color: #eab308;
+}
+
 /* status: ACTIVE */
 .badgeActive {
   border: 1px solid #22c55e;

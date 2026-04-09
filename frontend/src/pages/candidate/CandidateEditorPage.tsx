@@ -22,13 +22,14 @@
 
 import { lazy, Suspense, memo, useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
-import type { OnMount, OnChange } from '@monaco-editor/react';
+import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 
 import { getCandidateToken, getCandidateVacancy } from '@/auth/candidateSession';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCursorSocket } from '@/hooks/useCursorSocket';
 import LanguageSelector from '@/components/LanguageSelector';
 import InterviewTimer from '@/components/InterviewTimer';
+import { defineNeoTheme, NEO_THEME_NAME } from '@/styles/monacoTheme';
 import styles from './CandidateEditorPage.module.css';
 
 // ---------------------------------------------------------------------------
@@ -54,6 +55,11 @@ const MONACO_LANG: Record<string, string> = {
   JavaScript: 'javascript',
   'C++':      'cpp',
   Bash:       'shell',
+};
+
+// Defined at module scope — stable reference, called once before first render.
+const handleBeforeMount: BeforeMount = (monaco) => {
+  defineNeoTheme(monaco);
 };
 
 // ── Monaco options object defined outside the component ────────────────────
@@ -111,7 +117,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
 
   // Initialise from the session — set by the join page from the same join-info
   // fetch, so no extra round-trip is needed and the name is instantly correct.
-  const [nameVacancy, setNameVacancy] = useState(getCandidateVacancy() ?? '');
+  const [nameVacancy] = useState(getCandidateVacancy() ?? '');
   const [idLanguage,  setIdLanguage]  = useState('Kotlin');
   const [initialCode, setInitialCode] = useState('');
   /**
@@ -277,9 +283,14 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
-          const data = await res.json() as { textContent?: string; idLanguage?: string };
-          setInitialCode(data.textContent ?? '');
-          if (data.idLanguage) setIdLanguage(data.idLanguage);
+          // Real API: { textCode, language }  Mock API: { textContent, idLanguage }
+          const data = await res.json() as {
+            textContent?: string; textCode?: string;
+            idLanguage?: string; language?: string;
+          };
+          setInitialCode(data.textContent ?? data.textCode ?? '');
+          const lang = data.idLanguage ?? data.language;
+          if (lang) setIdLanguage(lang);
         }
         // On 404 or other error: initialCode stays '', idLanguage stays 'kotlin'
       } catch {
@@ -393,7 +404,8 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
               height="100%"
               language={MONACO_LANG[idLanguage] ?? idLanguage.toLowerCase()}
               defaultValue={initialCode}
-              theme="vs-dark"
+              theme={NEO_THEME_NAME}
+              beforeMount={handleBeforeMount}
               options={MONACO_OPTIONS}
               onMount={handleEditorMount}
               onChange={handleEditorChange}

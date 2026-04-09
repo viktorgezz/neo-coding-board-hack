@@ -31,7 +31,8 @@ interface SuccessState {
 
 interface CreateRoomResponse {
   idRoom: string;
-  url:    string;
+  /** Backend may return a different path (e.g. /room/.../join); we build the real SPA URL locally. */
+  url?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +112,9 @@ export default function CreateInterviewPage() {
       }
 
       const data = await res.json() as CreateRoomResponse;
-      setSuccessState({ idRoom: data.idRoom, url: data.url });
+      // Router path is /session/:id/join (see router/index.tsx). Backend often returns /room/:id/join — unusable here.
+      const candidateJoinUrl = `${window.location.origin}/session/${data.idRoom}/join`;
+      setSuccessState({ idRoom: data.idRoom, url: candidateJoinUrl });
       setPhase('success');
     } catch {
       setError('Сетевая ошибка. Проверьте соединение.');

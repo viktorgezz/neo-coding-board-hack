@@ -306,19 +306,46 @@ function mockApiPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), mockApiPlugin()],
+  // mockApiPlugin() intentionally removed — real backend at 111.88.127.60:8080
+  plugins: [react()],
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
   },
   server: {
     proxy: {
-      // Tasks Bank Service — proxied to avoid CORS in dev.
-      // Requests to /tasks-api/* are forwarded to http://72.56.248.147:8001/*
-      // with the /tasks-api prefix stripped.
-      '/tasks-api': {
-        target:      'http://72.56.248.147:8001',
+      // ── Main business API (rooms, auth, notes, code) ─────────────────
+      '/api': {
+        target:       'http://111.88.127.60:8080',
         changeOrigin: true,
-        rewrite:     (path) => path.replace(/^\/tasks-api/, ''),
+        configure(proxy) {
+          proxy.on('proxyReq', (proxyReq) => {
+            // Deployed backend often allows only specific FRONTEND_ORIGIN values.
+            // Browser → localhost:5173 still sends Origin: http://localhost:5173;
+            // if that origin is not on the server list, Spring CORS returns 403.
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
+      },
+
+      // ── STOMP WebSocket (code sync) ───────────────────────────────────
+      '/ws': {
+        target:       'http://111.88.127.60:8080',
+        changeOrigin: true,
+        ws:           true,
+        configure(proxy) {
+          proxy.on('proxyReq', (proxyReq) => {
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
+        },
+      },
+
+      // ── Tasks Bank Service ────────────────────────────────────────────
+      '/tasks-api': {
+        target:       'http://111.88.127.60:8001',
+        changeOrigin: true,
+        rewrite:      (path) => path.replace(/^\/tasks-api/, ''),
       },
     },
   },

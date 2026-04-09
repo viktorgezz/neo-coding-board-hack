@@ -65,7 +65,7 @@ interface PageInfo {
 interface CandidateRoomSummary {
   idRoom: string;
   nameCandidate: string | null;
-  status: 'ACTIVE' | 'FINISHED';
+  status: 'CREATED' | 'ACTIVE' | 'FINISHED';
   dateStart: string;
 }
 

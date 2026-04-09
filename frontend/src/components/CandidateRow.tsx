@@ -19,7 +19,7 @@ import styles from './CandidateRow.module.css';
 export interface HRRoomSummary {
   idRoom:          string;
   nameCandidate:   string | null;
-  status:          'ACTIVE' | 'FINISHED';
+  status:          'CREATED' | 'ACTIVE' | 'FINISHED';
   dateStart:       string;
   dateEnd:         string | null;
   timeOffset:      string;

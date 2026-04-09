@@ -30,8 +30,11 @@ interface JoinInfoResponse {
 }
 
 interface RegisterResponse {
-  tokenAccess: string;
+  // camelCase (mock) or snake_case (real backend)
+  tokenAccess?: string;
   tokenRefresh?: string;
+  access_token?: string;
+  refresh_token?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,7 +122,8 @@ export default function CandidateJoinPage() {
       const res = await fetch(`/api/v1/rooms/register/${idRoom}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nameCandidate: trimmed }),
+        // Real API expects full_name; mock expected nameCandidate
+        body: JSON.stringify({ full_name: trimmed, nameCandidate: trimmed }),
       });
 
       if (!res.ok) {
@@ -127,7 +131,9 @@ export default function CandidateJoinPage() {
         return;
       }
 
-      const { tokenAccess } = await res.json() as RegisterResponse;
+      const raw = await res.json() as RegisterResponse;
+      // Normalize: real API → access_token, mock → tokenAccess
+      const tokenAccess = raw.tokenAccess ?? raw.access_token ?? '';
 
       // Store token, room ID, and vacancy name in the module-level session.
       // Passing vacancyName ensures the editor shows the same vacancy the

@@ -9,15 +9,16 @@ import { memo } from 'react';
 import styles from './StatusBadge.module.css';
 
 export interface StatusBadgeProps {
-  status: 'ACTIVE' | 'FINISHED';
+  status: 'CREATED' | 'ACTIVE' | 'FINISHED';
 }
 
 const StatusBadge = memo(function StatusBadge({ status }: StatusBadgeProps) {
-  const isActive = status === 'ACTIVE';
+  const variant =
+    status === 'ACTIVE'   ? styles.badgeActive
+    : status === 'CREATED' ? styles.badgeCreated
+    :                       styles.badgeFinished;
   return (
-    <span
-      className={`${styles.statusBadge} ${isActive ? styles.badgeActive : styles.badgeFinished}`}
-    >
+    <span className={`${styles.statusBadge} ${variant}`}>
       <span className={styles.dot} />
       {status}
     </span>

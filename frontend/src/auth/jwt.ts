@@ -67,19 +67,26 @@ export function decodeJWT(token: string): JWTPayload | null {
 
     // Extract to locals so TypeScript can narrow each type through the guard below
     const sub = p['sub'];
-    const role = p['role'];
     const exp = p['exp'];
     const iat = p['iat'];
+
+    // Backend sends uppercase roles: INTERVIEWER, HR, SUPERUSER
+    // Normalize to lowercase and map SUPERUSER → admin
+    const rawRole = p['role'];
+    const normalizedRole = typeof rawRole === 'string'
+      ? (rawRole.toLowerCase() === 'superuser' ? 'admin' : rawRole.toLowerCase())
+      : rawRole;
 
     if (
       typeof sub !== 'string' ||
       typeof exp !== 'number' ||
       typeof iat !== 'number' ||
-      !isValidAuthRole(role)
+      !isValidAuthRole(normalizedRole)
     ) {
       return null;
     }
 
+    const role = normalizedRole;
     return { sub, role, exp, iat };
   } catch {
     // Malformed base64, JSON parse error, or any other exception

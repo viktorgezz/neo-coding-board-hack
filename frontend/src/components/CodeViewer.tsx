@@ -25,15 +25,20 @@
  */
 
 import { lazy, Suspense, useEffect, useRef, useCallback } from 'react';
-import type { OnMount, OnChange } from '@monaco-editor/react';
+import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCursorSocket } from '@/hooks/useCursorSocket';
+import { defineNeoTheme, NEO_THEME_NAME } from '@/styles/monacoTheme';
 import styles from './CodeViewer.module.css';
 
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
 type Monaco                = Parameters<OnMount>[1];
+
+const handleBeforeMount: BeforeMount = (monaco) => {
+  defineNeoTheme(monaco);
+};
 
 const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
   fontSize:             15,
@@ -139,9 +144,13 @@ export default function CodeViewer({
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
-        const data = await res.json() as { textContent?: string; idLanguage?: string };
-        const code = data.textContent ?? '';
-        const lang = data.idLanguage   ?? 'plaintext';
+        // Real API: { textCode, language }  Mock API: { textContent, idLanguage }
+        const data = await res.json() as {
+          textContent?: string; textCode?: string;
+          idLanguage?: string; language?: string;
+        };
+        const code = data.textContent ?? data.textCode ?? '';
+        const lang = data.idLanguage  ?? data.language  ?? 'plaintext';
 
         initialCodeRef.current = code;
         initialLangRef.current = lang;
@@ -266,9 +275,10 @@ export default function CodeViewer({
         <Suspense fallback={EDITOR_FALLBACK}>
           <MonacoEditor
             height="100%"
-            theme="vs-dark"
             defaultLanguage="plaintext"
             defaultValue=""
+            theme={NEO_THEME_NAME}
+            beforeMount={handleBeforeMount}
             options={MONACO_OPTIONS}
             onMount={handleEditorMount}
             onChange={handleEditorChange}

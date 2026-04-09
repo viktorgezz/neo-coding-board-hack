@@ -7,8 +7,8 @@
  *
  * Step 2: Read-only score summary + binary verdict selector (ПРОЙДЕНО /
  *         НЕ ПРОЙДЕНО). Confirm fires two sequential API calls:
- *           A) POST /rooms/{idRoom}/interviewer-assessment
- *           B) PATCH /rooms/finish/{idRoom}  ← only if A succeeded
+ *           A) POST /rooms/{idRoom}/interviewer-assessment (optional — 404/405 skips)
+ *           B) PATCH /rooms/finish/{idRoom}
  *
  * Unmount pattern: returns null when isOpen is false, resetting all local
  * state automatically when the modal reopens.
@@ -140,8 +140,7 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
     setIsSubmitting(true);
     setError(null);
 
-    // ── Step A: POST assessment ────────────────────────────────────────────
-    // If this fails, we stop immediately — finish PATCH is never called.
+    // ── Step A: POST assessment (some deployments omit this route) ─────────
     try {
       const assessRes = await fetch(`/api/v1/rooms/${idRoom}/interviewer-assessment`, {
         method:  'POST',
@@ -154,7 +153,8 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
           verdict,
         } satisfies AssessmentBody),
       });
-      if (!assessRes.ok) {
+      const absent = assessRes.status === 404 || assessRes.status === 405;
+      if (!assessRes.ok && !absent) {
         throw new Error(`Assessment failed (${assessRes.status})`);
       }
     } catch (err) {
@@ -164,11 +164,10 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
           : 'Не удалось сохранить оценку.',
       );
       setIsSubmitting(false);
-      return; // ← hard stop: finish is NOT called
+      return;
     }
 
     // ── Step B: PATCH finish ───────────────────────────────────────────────
-    // Only reached when assessment succeeded.
     // 'FAILED' → codeResolution: 'REJECTED' (different strings — API contract).
     try {
       const codeResolution: 'PASSED' | 'REJECTED' =

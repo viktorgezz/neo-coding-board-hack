@@ -80,7 +80,7 @@ export interface AuthContextValue {
    * without re-reading the hook (which would be a Rules-of-Hooks violation
    * inside an async callback).
    */
-  login: (email: string, password: string) => Promise<AuthRole>;
+  login: (username: string, password: string) => Promise<AuthRole>;
   logout: () => void;
 }
 
@@ -147,9 +147,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // ── login ─────────────────────────────────────────────────────────────────
 
-  const login = useCallback(async (email: string, password: string): Promise<AuthRole> => {
+  const login = useCallback(async (username: string, password: string): Promise<AuthRole> => {
     // apiLogin throws on non-2xx — let it propagate to the caller (LoginPage)
-    const { tokenAccess, tokenRefresh, name } = await apiLogin(email, password);
+    const { tokenAccess, tokenRefresh, name } = await apiLogin(username, password);
 
     const payload = decodeJWT(tokenAccess);
     if (!payload || isTokenExpired(payload)) {

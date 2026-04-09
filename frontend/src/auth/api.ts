@@ -63,11 +63,11 @@ function createMockJwt(role: MockAuthRole, sub: string, lifetimeSeconds: number)
   return `${toBase64Url(JSON.stringify(header))}.${toBase64Url(JSON.stringify(payload))}.mock-signature`;
 }
 
-function tryMockLogin(email: string, password: string): LoginResponse | null {
-  const normalizedEmail = email.trim().toLowerCase();
+function tryMockLogin(username: string, password: string): LoginResponse | null {
+  const normalizedLogin = username.trim().toLowerCase();
   const normalizedPassword = password.trim();
   const account = MOCK_ACCOUNTS.find(
-    (item) => item.email === normalizedEmail && item.password === normalizedPassword,
+    (item) => item.email === normalizedLogin && item.password === normalizedPassword,
   );
   if (!account) {
     return null;
@@ -86,33 +86,46 @@ function tryMockLogin(email: string, password: string): LoginResponse | null {
 /**
  * POST /api/v1/auth/login
  *
- * Throws an Error with res.statusText on any non-2xx response so the caller
- * (LoginPage) can catch and surface a human-readable message.
+ * @param username — login string (email-style or plain username, per backend)
  */
 export async function apiLogin(
-  email: string,
+  username: string,
   password: string,
 ): Promise<LoginResponse> {
   if (import.meta.env.DEV) {
-    if (email.trim().toLowerCase() === 'candidate@neo.local' && password.trim() === 'candidate123') {
+    if (username.trim().toLowerCase() === 'candidate@neo.local' && password.trim() === 'candidate123') {
       throw new Error('Candidate uses /session/:id/join flow, not /login');
     }
 
-    const mock = tryMockLogin(email, password);
+    const mock = tryMockLogin(username, password);
     if (mock !== null) {
       return mock;
     }
   }
 
+  // Backend field is "name" (login / username, not necessarily an email)
   const res = await fetch('/api/v1/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ name: username.trim(), password }),
   });
 
   if (!res.ok) {
     throw new Error(res.statusText || String(res.status));
   }
 
-  return res.json() as Promise<LoginResponse>;
+  // Real API returns snake_case: access_token, refresh_token, token_type
+  // Normalize to camelCase that the rest of the frontend expects
+  const raw = await res.json() as {
+    access_token?: string;  tokenAccess?: string;
+    refresh_token?: string; tokenRefresh?: string;
+    name?: string;
+  };
+
+  const tokenAccess  = raw.access_token  ?? raw.tokenAccess  ?? '';
+  const tokenRefresh = raw.refresh_token ?? raw.tokenRefresh ?? '';
+  // API doesn't return a display name — decode sub (username) from the JWT payload
+  const sub = tokenAccess ? (JSON.parse(atob(tokenAccess.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))) as {sub?: string}).sub ?? '' : '';
+
+  return { tokenAccess, tokenRefresh, name: raw.name ?? sub };
 }

@@ -12,7 +12,7 @@
  * All WS / API / note-CRUD logic stays inside CodeViewer and NotesPanel.
  */
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import CodeViewer from '@/components/CodeViewer';
@@ -42,6 +42,21 @@ export default function InterviewerRoomPage() {
   const handleWsError   = useCallback(() => { setWsStatus('disconnected'); }, []);
 
   const resolvedToken = token ?? '';
+
+  // Transition CREATED → ACTIVE on the server when the interviewer opens the room.
+  useEffect(() => {
+    if (!idRoom || !resolvedToken) return;
+    void (async () => {
+      try {
+        await fetch(`/api/v1/rooms/start/${idRoom}`, {
+          method:  'PATCH',
+          headers: { Authorization: `Bearer ${resolvedToken}` },
+        });
+      } catch {
+        // Non-fatal — room may already be ACTIVE or WS still works.
+      }
+    })();
+  }, [idRoom, resolvedToken]);
 
   return (
     <div className={styles.roomRoot}>

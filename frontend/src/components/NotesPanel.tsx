@@ -10,13 +10,41 @@
  * NoteRow memo is effective even when noteInput state changes on every keystroke.
  */
 
-import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type KeyboardEvent,
+} from 'react';
 import NoteRow from './NoteRow';
 import type { NoteResponse } from './NoteRow';
 import styles from './NotesPanel.module.css';
 
-interface NoteListPage {
-  content: NoteResponse[];
+function normalizeNote(raw: unknown): NoteResponse | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (o.id === undefined || o.id === null) return null;
+  return {
+    id:          String(o.id),
+    textContent: typeof o.textContent === 'string' ? o.textContent : '',
+    timeOffset:  typeof o.timeOffset === 'string' ? o.timeOffset : '',
+    timeCreated: typeof o.timeCreated === 'string' ? o.timeCreated : '',
+  };
+}
+
+/** Spring paged `content` or OpenAPI `NoteListResponse.listNotes`. */
+function parseNotesPayload(data: unknown): NoteResponse[] {
+  if (!data || typeof data !== 'object') return [];
+  const o = data as Record<string, unknown>;
+  const rawList =
+    Array.isArray(o.content) ? o.content
+    : Array.isArray(o.listNotes) ? o.listNotes
+    : [];
+  return rawList
+    .map(normalizeNote)
+    .filter((n): n is NoteResponse => n !== null);
 }
 
 type DifficultyLevel = 'easy' | 'medium' | 'hard';
@@ -59,29 +87,42 @@ export default function NotesPanel({
   const [tasksError,         setTasksError]         = useState<string | null>(null);
   const [selectedCategory,   setSelectedCategory]   = useState<number | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
+  const [taskSearchQuery, setTaskSearchQuery]       = useState('');
   const inputRef     = useRef<HTMLInputElement | null>(null);
   const notesListRef = useRef<HTMLDivElement | null>(null);
+
+  const filteredTasks = useMemo(() => {
+    const q = taskSearchQuery.trim().toLowerCase();
+    if (!q) return tasks;
+    return tasks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q)
+        || (t.statement && t.statement.toLowerCase().includes(q)),
+    );
+  }, [tasks, taskSearchQuery]);
 
   // ── Mount: fetch existing notes ────────────────────────────────────────
 
   useEffect(() => {
     async function fetchNotes() {
       try {
-        const res = await fetch(
+        const headers = { Authorization: `Bearer ${token}` };
+        let res = await fetch(
           `/api/v1/rooms/${idRoom}/notes/paged?page=0&size=50`,
-          { headers: { Authorization: `Bearer ${token}` } },
+          { headers },
         );
         if (res.ok) {
-          const data = await res.json() as NoteListPage;
-          setNotes(data.content);
+          setNotes(parseNotesPayload(await res.json()));
+          return;
         }
+        res = await fetch(`/api/v1/rooms/${idRoom}/notes`, { headers });
+        if (res.ok) setNotes(parseNotesPayload(await res.json()));
       } catch {
         // Non-fatal — notes panel degrades gracefully to empty list
       }
     }
     void fetchNotes();
-  }, [idRoom]); // eslint-disable-line react-hooks/exhaustive-deps
-  // token is stable for session lifetime; idRoom identifies the resource
+  }, [idRoom, token]);
 
   // ── Task bank: fetch categories (once on mount) ────────────────────────
 
@@ -145,8 +186,10 @@ export default function NotesPanel({
         body: JSON.stringify({ textContent: trimmed }),
       });
       if (res.ok) {
-        const note = await res.json() as NoteResponse;
-        setNotes((prev) => [...prev, note]);
+        const n = normalizeNote(await res.json());
+        if (n) {
+          setNotes((prev) => [...prev, n]);
+        }
         // Scroll to bottom after React re-renders the new row
         requestAnimationFrame(() => {
           const list = notesListRef.current;
@@ -179,6 +222,31 @@ export default function NotesPanel({
     }
   }, [idRoom, token]);
 
+  const handleUpdateNote = useCallback(
+    async (idNote: string, textContent: string): Promise<boolean> => {
+      const trimmed = textContent.trim();
+      if (!trimmed) return false;
+      try {
+        const res = await fetch(`/api/v1/rooms/${idRoom}/notes/${idNote}`, {
+          method:  'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization:  `Bearer ${token}`,
+          },
+          body: JSON.stringify({ textContent: trimmed }),
+        });
+        if (!res.ok) return false;
+        const n = normalizeNote(await res.json());
+        if (!n) return false;
+        setNotes((prev) => prev.map((x) => (x.id === idNote ? n : x)));
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [idRoom, token],
+  );
+
   // ── Keyboard handler ───────────────────────────────────────────────────
 
   function handleNoteKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -193,7 +261,7 @@ export default function NotesPanel({
   return (
     <div className={styles.notesPanel}>
 
-      {/* ── 1. БАНК ЗАДАЧ (fixed height, no scroll) ─────────────────── */}
+      {/* ── 1. БАНК ЗАДАЧ (верхняя половина панели, свой скролл) ───── */}
       <div className={styles.taskBank}>
         <div className={styles.sectionTitle}>Банк задач</div>
 
@@ -221,33 +289,47 @@ export default function NotesPanel({
             }}
           >
             <option value="">Любая сложность</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
+            <option value="easy">Лёгкая</option>
+            <option value="medium">Средняя</option>
+            <option value="hard">Сложная</option>
           </select>
         </div>
 
-        <div className={styles.taskList}>
-          {tasksLoading && (
-            <span className={styles.taskPlaceholder}>Загрузка...</span>
-          )}
-          {!tasksLoading && tasksError && (
-            <span className={styles.taskPlaceholder}>Задачи не загружены</span>
-          )}
-          {!tasksLoading && !tasksError && tasks.length === 0 && (
-            <span className={styles.taskPlaceholder}>Задачи не загружены</span>
-          )}
-          {!tasksLoading && !tasksError && tasks.map((task) => (
-            <div key={task.id} className={styles.taskItem}>
-              <div className={styles.taskTitleRow}>
-                <span className={styles.taskTitle}>{task.title}</span>
-                <span className={styles.taskBadge}>{task.difficulty}</span>
+        <input
+          type="search"
+          className={styles.taskSearch}
+          placeholder="Поиск задач…"
+          value={taskSearchQuery}
+          onChange={(e) => setTaskSearchQuery(e.target.value)}
+          aria-label="Поиск задач"
+        />
+
+        <div className={styles.taskListScroll}>
+          <div className={styles.taskList}>
+            {tasksLoading && (
+              <span className={styles.taskPlaceholder}>Загрузка...</span>
+            )}
+            {!tasksLoading && tasksError && (
+              <span className={styles.taskPlaceholder}>Задачи не загружены</span>
+            )}
+            {!tasksLoading && !tasksError && tasks.length === 0 && (
+              <span className={styles.taskPlaceholder}>Задачи не загружены</span>
+            )}
+            {!tasksLoading && !tasksError && tasks.length > 0 && filteredTasks.length === 0 && (
+              <span className={styles.taskPlaceholder}>Ничего не найдено</span>
+            )}
+            {!tasksLoading && !tasksError && filteredTasks.map((task) => (
+              <div key={task.id} className={styles.taskItem}>
+                <div className={styles.taskTitleRow}>
+                  <span className={styles.taskTitle}>{task.title}</span>
+                  <span className={styles.taskBadge}>{task.difficulty}</span>
+                </div>
+                {task.statement && (
+                  <div className={styles.taskStatement}>{task.statement}</div>
+                )}
               </div>
-              {task.statement && (
-                <div className={styles.taskStatement}>{task.statement}</div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -264,6 +346,7 @@ export default function NotesPanel({
                 key={note.id}
                 note={note}
                 onDelete={handleDeleteNote}
+                onUpdate={handleUpdateNote}
               />
             ))
           )}

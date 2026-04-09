@@ -23,6 +23,14 @@
   background: #22c55e;
 }
 
+/* CREATED variant */
+.badgeCreated {
+  color: #eab308;
+}
+.badgeCreated .dot {
+  background: #eab308;
+}
+
 /* FINISHED variant */
 .badgeFinished {
   color: var(--text-muted);

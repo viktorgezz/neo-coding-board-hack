@@ -14,6 +14,26 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.rowActions {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.noteEditInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #c0c0e0;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
 .noteTime {
   font-family: 'Courier New', Courier, monospace;
   font-size: 12px;
@@ -34,8 +54,37 @@
   min-width: 0;
 }
 
-/* Delete button: invisible by default, revealed on row hover.
- * Always in normal flow — space reserved, no layout shift on hover. */
+/* Edit / delete: invisible by default, revealed on row hover. */
+.editBtn {
+  width: 18px;
+  height: 18px;
+  font-size: 11px;
+  color: #6060a0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.noteRow:hover .editBtn {
+  opacity: 1;
+}
+
+.editBtn:hover:not(:disabled) {
+  color: #e0e0ff;
+}
+
+.editBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .deleteBtn {
   width: 18px;
   height: 18px;
@@ -53,7 +102,12 @@
   line-height: 1;
 }
 
-.noteRow:hover .deleteBtn {
+.noteRow:hover .deleteBtn,
+.noteRow[data-editing='true'] .deleteBtn {
+  opacity: 1;
+}
+
+.noteRow[data-editing='true'] .editBtn {
   opacity: 1;
 }
 

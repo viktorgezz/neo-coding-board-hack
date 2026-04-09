@@ -4,8 +4,9 @@
  * Priority logic:
  *   1. codeResolution === 'PASSED'   → green  "ПРОЙДЕНО"
  *   2. codeResolution === 'REJECTED' → red    "НЕ ПРОЙДЕНО"
- *   3. status === 'ACTIVE'           → dark + green dot + "ACTIVE"
- *   4. status === 'FINISHED'         → dark gray "ЗАВЕРШЕНО"
+ *   3. status === 'CREATED'          → amber "ОЖИДАНИЕ"
+ *   4. status === 'ACTIVE'           → dark + green dot + "ACTIVE"
+ *   5. status === 'FINISHED'         → dark gray "ЗАВЕРШЕНО"
  *
  * codeResolution is optional — the list API may not include it.
  * Guard with optional chaining at the call site: room.codeResolution ?? null.
@@ -17,7 +18,7 @@ import { memo } from 'react';
 import styles from './VerdictBadge.module.css';
 
 export interface VerdictBadgeProps {
-  status:          'ACTIVE' | 'FINISHED';
+  status:          'CREATED' | 'ACTIVE' | 'FINISHED';
   codeResolution?: 'PASSED' | 'REJECTED' | null;
 }
 
@@ -37,6 +38,14 @@ const VerdictBadge = memo(function VerdictBadge({
     return (
       <span className={`${styles.badge} ${styles.badgeRejected}`}>
         НЕ ПРОЙДЕНО
+      </span>
+    );
+  }
+
+  if (status === 'CREATED') {
+    return (
+      <span className={`${styles.badge} ${styles.badgeCreated}`}>
+        ОЖИДАНИЕ
       </span>
     );
   }
