@@ -1,7 +1,7 @@
 /* ── Page root ──────────────────────────────────────────────────────────── */
 .adminPage {
   padding: 32px;
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
@@ -47,6 +47,26 @@
   background: #6d28d9;
 }
 
+.manageTaskBankBtn {
+  height: 34px;
+  padding: 0 14px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.manageTaskBankBtn:hover {
+  background: #111b2f;
+}
+
 /* ── Table header ────────────────────────────────────────────────────────── */
 /*
  * grid-template-columns MUST match .userRow in UserRow.module.css
@@ -54,7 +74,7 @@
  */
 .tableHeader {
   display: grid;
-  grid-template-columns: 1fr 120px 140px 44px;
+  grid-template-columns: 1fr 120px 140px 88px;
   align-items: center;
   padding: 0 16px;
   height: 36px;
@@ -78,7 +98,7 @@
 /* Same grid as .tableHeader and UserRow — columns must stay in sync */
 .skeletonRow {
   display: grid;
-  grid-template-columns: 1fr 120px 140px 44px;
+  grid-template-columns: 1fr 120px 140px 88px;
   align-items: center;
   padding: 0 16px;
   height: 52px;
@@ -147,4 +167,54 @@
 
 .retryBtn:hover {
   background: #141414;
+}
+
+.candidateSection {
+  margin-top: 24px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 14px;
+  background: #0f172a;
+}
+
+.candidateTitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #e5e7eb;
+}
+
+.candidateList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.candidateItem {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #223047;
+  background: #111827;
+}
+
+.candidateMeta {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.openReportBtn {
+  border: 1px solid #7c3aed;
+  background: #4c1d95;
+  color: #f3e8ff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.openReportBtn:hover {
+  background: #5b21b6;
 }

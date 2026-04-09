@@ -10,7 +10,7 @@
 
 .userRow {
   display: grid;
-  grid-template-columns: 1fr 120px 140px 44px;
+  grid-template-columns: 1fr 120px 140px 88px;
   align-items: center;
   padding: 0 16px;
   height: 52px;
@@ -72,6 +72,31 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 4px;
+}
+
+.editBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+}
+
+.userRow:hover .editBtn {
+  opacity: 1;
+}
+
+.editBtn:hover {
+  color: #60a5fa;
+  background: #0f1a2b;
 }
 
 /* Delete button — invisible by default, revealed on row hover */

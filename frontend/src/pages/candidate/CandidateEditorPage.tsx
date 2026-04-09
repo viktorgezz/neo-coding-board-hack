@@ -26,6 +26,7 @@ import type { OnMount, OnChange } from '@monaco-editor/react';
 
 import { getCandidateToken } from '@/auth/candidateSession';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useCursorSocket } from '@/hooks/useCursorSocket';
 import LanguageSelector from '@/components/LanguageSelector';
 import InterviewTimer from '@/components/InterviewTimer';
 import styles from './CandidateEditorPage.module.css';
@@ -122,6 +123,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
    * the component (and potentially remount Monaco) on every WS reconnect.
    */
   const editorRef = useRef<IStandaloneCodeEditor | null>(null);
+  const interviewerDecorationsRef = useRef<string[]>([]);
 
   /**
    * Last textContent value — updated synchronously in onChange so sendCursor
@@ -150,6 +152,36 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
     // idLanguage changes propagate into the hook via its own useEffect([idLanguage])
     // which updates idLanguageRef.current. The STOMP connection is not restarted.
   });
+  const { sendCursorPosition, cursorFromInterviewer } = useCursorSocket({
+    interviewId: idRoom,
+    role: 'candidate',
+  });
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || !cursorFromInterviewer) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const line = Math.min(Math.max(cursorFromInterviewer.line, 1), model.getLineCount());
+    const maxColumn = model.getLineMaxColumn(line);
+    const column = Math.min(Math.max(cursorFromInterviewer.column, 1), maxColumn);
+
+    interviewerDecorationsRef.current = editor.deltaDecorations(interviewerDecorationsRef.current, [
+      {
+        range: {
+          startLineNumber: line,
+          startColumn: column,
+          endLineNumber: line,
+          endColumn: column,
+        },
+        options: {
+          className: 'interviewer-cursor-decoration',
+        },
+      },
+    ]);
+  }, [cursorFromInterviewer]);
 
   // ── Metric callbacks ──────────────────────────────────────────────────────
   // Defined with useCallback so their references are stable for the document
@@ -269,6 +301,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
     // Cursor position → sendCursor (immediate, no debounce in hook)
     editor.onDidChangeCursorPosition((e) => {
       sendCursor(e.position.lineNumber, e.position.column);
+      sendCursorPosition(e.position.lineNumber, e.position.column);
     });
 
     // Monaco paste event — works for paste via editor command/keyboard
@@ -277,7 +310,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
     editor.onDidPaste(() => {
       fireMetricPaste();
     });
-  }, [sendCursor, fireMetricPaste]);
+  }, [sendCursor, sendCursorPosition, fireMetricPaste]);
 
   const handleEditorChange = useCallback<OnChange>((value, _ev) => {
     const text = value ?? '';

@@ -27,6 +27,26 @@ export interface NotesPanelProps {
   onFinish:  () => void; // opens VerdictModal
 }
 
+type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
+interface CategoryRead {
+  id: number;
+  name: string;
+}
+
+interface TaskRead {
+  id: number;
+  title: string;
+  statement: string;
+  difficulty: DifficultyLevel;
+  category_id: number;
+}
+
+const TASKS_BANK_BASE_URL = (
+  import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
+  ?? 'http://72.56.248.147:8001'
+).replace(/\/$/, '');
+
 export default function NotesPanel({
   idRoom,
   token,
@@ -36,6 +56,12 @@ export default function NotesPanel({
   const [notes,            setNotes]            = useState<NoteResponse[]>([]);
   const [noteInput,        setNoteInput]        = useState('');
   const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+  const [taskCategories,   setTaskCategories]   = useState<CategoryRead[]>([]);
+  const [tasks,            setTasks]            = useState<TaskRead[]>([]);
+  const [tasksLoading,     setTasksLoading]     = useState(false);
+  const [tasksError,       setTasksError]       = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // ── Mount: fetch existing notes ────────────────────────────────────────
@@ -58,6 +84,43 @@ export default function NotesPanel({
     void fetchNotes();
   }, [idRoom]); // eslint-disable-line react-hooks/exhaustive-deps
   // token is stable for session lifetime; idRoom identifies the resource
+
+  useEffect(() => {
+    async function fetchTaskCategories() {
+      try {
+        const res = await fetch(`${TASKS_BANK_BASE_URL}/api/v1/categories`);
+        if (!res.ok) return;
+        const data = await res.json() as CategoryRead[];
+        setTaskCategories(data);
+      } catch {
+        // non-fatal
+      }
+    }
+    void fetchTaskCategories();
+  }, []);
+
+  useEffect(() => {
+    async function fetchTasks() {
+      setTasksLoading(true);
+      setTasksError(null);
+      try {
+        const params = new URLSearchParams();
+        if (selectedCategory !== null) params.set('category_id', String(selectedCategory));
+        if (selectedDifficulty !== null) params.set('difficulty', selectedDifficulty);
+        const query = params.toString();
+        const url = `${TASKS_BANK_BASE_URL}/api/v1/tasks${query ? `?${query}` : ''}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json() as TaskRead[];
+        setTasks(data);
+      } catch {
+        setTasksError('Не удалось загрузить задачи');
+      } finally {
+        setTasksLoading(false);
+      }
+    }
+    void fetchTasks();
+  }, [selectedCategory, selectedDifficulty]);
 
   // ── Add note ───────────────────────────────────────────────────────────
 
@@ -130,6 +193,54 @@ export default function NotesPanel({
       <div className={styles.notesPanelHeader}>
         <span className={styles.notesLabel}>Заметки</span>
         <InterviewTimer startTime={startTime} />
+      </div>
+
+      <div className={styles.taskBank}>
+        <div className={styles.taskBankTitle}>Банк задач</div>
+        <div className={styles.taskFilters}>
+          <select
+            className={styles.taskFilter}
+            value={selectedCategory ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSelectedCategory(value ? Number(value) : null);
+            }}
+          >
+            <option value="">Все категории</option>
+            {taskCategories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          <select
+            className={styles.taskFilter}
+            value={selectedDifficulty ?? ''}
+            onChange={(e) => {
+              const value = e.target.value as DifficultyLevel | '';
+              setSelectedDifficulty(value || null);
+            }}
+          >
+            <option value="">Любая сложность</option>
+            <option value="easy">easy</option>
+            <option value="medium">medium</option>
+            <option value="hard">hard</option>
+          </select>
+        </div>
+        <div className={styles.taskBankList}>
+          {tasksLoading && <div className={styles.taskState}>Загрузка задач...</div>}
+          {!tasksLoading && tasksError && <div className={styles.taskStateError}>{tasksError}</div>}
+          {!tasksLoading && !tasksError && tasks.length === 0 && (
+            <div className={styles.taskState}>Задачи не найдены</div>
+          )}
+          {!tasksLoading && !tasksError && tasks.map((task) => (
+            <div key={task.id} className={styles.taskBankItem}>
+              <div className={styles.taskTitleRow}>
+                <span className={styles.taskTitle}>{task.title}</span>
+                <span className={styles.taskBadge}>{task.difficulty}</span>
+              </div>
+              <div className={styles.taskStatement}>{task.statement}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Notes list */}

@@ -1,0 +1,138 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NEO Cursor WS Service",
+    "version": "1.0.0",
+    "description": "Service for real-time cursor synchronization between candidate and interviewer over WebSocket."
+  },
+  "paths": {
+    "/ws/{interview_id}/{user_role}": {
+      "get": {
+        "summary": "WebSocket cursor stream",
+        "description": "Upgrade this route to WebSocket and exchange cursor positions in JSON format.",
+        "operationId": "cursor_ws",
+        "tags": [
+          "WebSocket"
+        ],
+        "parameters": [
+          {
+            "name": "interview_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Interview/session identifier."
+          },
+          {
+            "name": "user_role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "candidate",
+                "interviewer"
+              ]
+            },
+            "description": "Participant role in the room."
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "Switching Protocols (WebSocket upgraded)."
+          },
+          "400": {
+            "description": "Invalid payload in one of incoming messages."
+          },
+          "403": {
+            "description": "Handshake forbidden."
+          }
+        },
+        "x-websocket": {
+          "messageProtocol": "json",
+          "incomingMessageSchema": {
+            "$ref": "#/components/schemas/CursorIn"
+          },
+          "outgoingMessageSchema": {
+            "$ref": "#/components/schemas/CursorOut"
+          },
+          "errorMessageSchema": {
+            "$ref": "#/components/schemas/ValidationErrorMessage"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CursorIn": {
+        "type": "object",
+        "required": [
+          "line",
+          "column"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "column": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "CursorOut": {
+        "type": "object",
+        "required": [
+          "line",
+          "column",
+          "timestamp",
+          "from_role"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "column": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "timestamp": {
+            "type": "number",
+            "format": "float",
+            "description": "Elapsed room time in seconds."
+          },
+          "from_role": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "interviewer"
+            ]
+          }
+        }
+      },
+      "ValidationErrorMessage": {
+        "type": "object",
+        "required": [
+          "error",
+          "details"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "invalid_cursor_payload"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    }
+  }
+}

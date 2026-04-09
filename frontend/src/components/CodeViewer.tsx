@@ -1,5 +1,5 @@
 /**
- * CodeViewer — read-only Monaco mirror of the candidate's live code.
+ * CodeViewer — Monaco workspace for interviewer room.
  *
  * Three concurrent concerns, all isolated to this component:
  *
@@ -21,9 +21,11 @@
  * a React re-render and reconciliation. Use editor.setValue() imperatively.
  */
 
-import { lazy, Suspense, useEffect, useRef, useCallback } from 'react';
+import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react';
 import type { OnMount } from '@monaco-editor/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useCursorSocket } from '@/hooks/useCursorSocket';
+import LanguageSelector from './LanguageSelector';
 import styles from './CodeViewer.module.css';
 
 // Module-scope lazy import — must NOT be inside the component.
@@ -36,8 +38,8 @@ type Monaco                = Parameters<OnMount>[1];
 // Stable Monaco options — defined at module scope so the object reference
 // never changes between renders, preventing Monaco option re-application.
 const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
-  readOnly:             true,
-  domReadOnly:          true, // belt-and-suspenders with readOnly
+  readOnly:             false,
+  domReadOnly:          false,
   fontSize:             15,
   minimap:              { enabled: false },
   scrollBeyondLastLine: false,
@@ -64,6 +66,7 @@ export default function CodeViewer({
   onConnect,
   onError,
 }: CodeViewerProps) {
+  const [language, setLanguage] = useState('plaintext');
   // ── Refs ────────────────────────────────────────────────────────────────
 
   const editorRef       = useRef<IStandaloneCodeEditor | null>(null);
@@ -82,6 +85,15 @@ export default function CodeViewer({
     idRoom,
     role:  'interviewer',
     token,
+  });
+  const {
+    isConnected: isCursorConnected,
+    error: cursorError,
+    cursorFromCandidate,
+    sendCursorPosition,
+  } = useCursorSocket({
+    interviewId: idRoom,
+    role: 'interviewer',
   });
 
   // ── Notify parent of connection events ────────────────────────────────
@@ -113,6 +125,7 @@ export default function CodeViewer({
         // Store for onMount in case editor hasn't mounted yet
         initialCodeRef.current = code;
         initialLangRef.current = lang;
+        setLanguage(lang);
 
         // Apply immediately if editor is already mounted
         if (editorRef.current) {
@@ -142,7 +155,12 @@ export default function CodeViewer({
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!liveCursor || !editor) return;
+    if (!editor) return;
+
+    const sourceCursor = cursorFromCandidate
+      ? { cursorLine: cursorFromCandidate.line, cursorCh: cursorFromCandidate.column }
+      : liveCursor;
+    if (!sourceCursor) return;
 
     // deltaDecorations: clear previous IDs, apply new decoration.
     // 'candidate-cursor-decoration' is a :global() CSS class in CodeViewer.module.css
@@ -150,10 +168,10 @@ export default function CodeViewer({
     const newIds = editor.deltaDecorations(decorationsRef.current, [
       {
         range: {
-          startLineNumber: liveCursor.cursorLine,
-          startColumn:     liveCursor.cursorCh,
-          endLineNumber:   liveCursor.cursorLine,
-          endColumn:       liveCursor.cursorCh,
+          startLineNumber: sourceCursor.cursorLine,
+          startColumn:     sourceCursor.cursorCh,
+          endLineNumber:   sourceCursor.cursorLine,
+          endColumn:       sourceCursor.cursorCh,
         },
         options: {
           className: 'candidate-cursor-decoration',
@@ -161,13 +179,17 @@ export default function CodeViewer({
       },
     ]);
     decorationsRef.current = newIds;
-  }, [liveCursor]);
+  }, [liveCursor, cursorFromCandidate]);
 
   // ── onMount: store editor ref, apply pre-fetched initial code ─────────
 
   const handleEditorMount = useCallback<OnMount>((editor, monaco) => {
     editorRef.current   = editor;
     monacoRef.current   = monaco;
+
+    editor.onDidChangeCursorPosition((e) => {
+      sendCursorPosition(e.position.lineNumber, e.position.column);
+    });
 
     // Apply initial code if the fetch already resolved before Monaco mounted
     if (initialCodeRef.current !== null) {
@@ -177,7 +199,15 @@ export default function CodeViewer({
       const model = editor.getModel();
       if (model) monaco.editor.setModelLanguage(model, initialLangRef.current);
     }
-  }, []); // stable — only called once by Monaco on first mount
+  }, [sendCursorPosition]); // stable — only called once by Monaco on first mount
+
+  const handleLanguageChange = useCallback((lang: string) => {
+    setLanguage(lang);
+    const model = editorRef.current?.getModel();
+    if (model && monacoRef.current) {
+      monacoRef.current.editor.setModelLanguage(model, lang);
+    }
+  }, []);
 
   // ── Render ─────────────────────────────────────────────────────────────
 
@@ -186,24 +216,27 @@ export default function CodeViewer({
 
       {/* Status dot — top right of header */}
       <div className={styles.viewerHeader}>
-        <span
-          className={`${styles.statusDot} ${
-            isConnected ? styles.statusDotConnected : styles.statusDotDisconnected
-          }`}
-        />
-        <span
-          className={`${styles.statusLabel} ${
-            isConnected ? styles.statusLabelConnected : styles.statusLabelDisconnected
-          }`}
-        >
-          {isConnected ? 'Live' : 'Отключён'}
-        </span>
+        <div className={styles.statusBlock}>
+          <span
+            className={`${styles.statusDot} ${
+            isConnected || isCursorConnected ? styles.statusDotConnected : styles.statusDotDisconnected
+            }`}
+          />
+          <span
+            className={`${styles.statusLabel} ${
+              isConnected || isCursorConnected ? styles.statusLabelConnected : styles.statusLabelDisconnected
+            }`}
+          >
+            {isConnected || isCursorConnected ? 'Live' : 'Отключён'}
+          </span>
+        </div>
+        <LanguageSelector value={language} onChange={handleLanguageChange} />
       </div>
 
       {/* WS error banner — rendered above Monaco when connection is lost */}
-      {error !== null && (
+      {(error !== null || cursorError !== null) && (
         <div className={styles.errorBanner} role="alert">
-          Соединение потеряно. Обновите страницу.
+          Соединение потеряно. Проверьте каналы code/cursor.
         </div>
       )}
 

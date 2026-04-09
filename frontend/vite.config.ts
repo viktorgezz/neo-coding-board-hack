@@ -71,7 +71,7 @@ const MOCK_ROOMS = [
   },
 ];
 
-const MOCK_ADMIN_USERS = [
+let MOCK_ADMIN_USERS = [
   {
     id:        'uid-1',
     name:      'Анна Смирнова',
@@ -274,7 +274,28 @@ function mockApiPlugin() {
         // ── DELETE /api/v1/admin/users/:id — удалить пользователя ────────────
         const adminDelM = path.match(/^\/api\/v1\/admin\/users\/([^/]+)$/);
         if (method === 'DELETE' && adminDelM) {
+          const id = adminDelM[1];
+          MOCK_ADMIN_USERS = MOCK_ADMIN_USERS.filter((u) => u.id !== id);
           return json({}, 204);
+        }
+
+        // ── PATCH /api/v1/admin/users/:id — обновить пользователя ────────────
+        const adminPatchM = path.match(/^\/api\/v1\/admin\/users\/([^/]+)$/);
+        if (method === 'PATCH' && adminPatchM) {
+          const id = adminPatchM[1];
+          const body = await readBody(req);
+          const existing = MOCK_ADMIN_USERS.find((u) => u.id === id);
+          if (!existing) {
+            return json({ message: 'User not found' }, 404);
+          }
+          const updated = {
+            ...existing,
+            name: String(body.name ?? existing.name),
+            email: String(body.email ?? existing.email),
+            role: (String(body.role ?? existing.role) as 'HR' | 'INTERVIEWER'),
+          };
+          MOCK_ADMIN_USERS = MOCK_ADMIN_USERS.map((u) => (u.id === id ? updated : u));
+          return json(updated, 200);
         }
 
         // Неизвестный маршрут — пусть Vite обрабатывает

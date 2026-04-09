@@ -140,3 +140,55 @@
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
+
+.demoAccounts {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #1f1f1f;
+}
+
+.demoTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #a3a3a3;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.demoList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.demoItem {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.demoRole {
+  color: #e5e5e5;
+  text-transform: uppercase;
+}
+
+.demoEmail {
+  color: #c4b5fd;
+}
+
+.demoPassword {
+  color: #a3a3a3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.demoHint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #737373;
+}
