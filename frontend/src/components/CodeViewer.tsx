@@ -1,39 +1,39 @@
 /**
  * CodeViewer — Monaco editor for the interviewer room.
  *
- * Three concurrent concerns:
- *
- *   1. WS subscription (useWebSocket, role='interviewer')
- *      liveCode   → editor.setValue() imperatively (echo-suppressed)
- *      liveCursor → deltaDecorations() — candidate cursor decoration
- *
- *   2. Initial code snapshot (GET /code/latest on mount)
- *      Sets editor content + language before the first WS message.
- *      Handles the race between fetch and Monaco mount via refs.
- *
- *   3. Error banner — shown inside the editor area when WS is lost.
- *
- * Interviewer edits:
- *   The editor is NOT read-only. When the interviewer types, onChange →
- *   sendCode() → debounced STOMP publish. The echo (same content coming
- *   back via liveCode) is suppressed by comparing current editor content
- *   before calling setValue(), preventing cursor-position resets.
- *
- * Language and cursor-visibility state are controlled by the parent
- * (InterviewerRoomPage) and passed as props so the page-level header
- * can render the language selector and cursor toggle.
+ * WSCodeService delivers full-document snapshots; we apply them with
+ * executeEdits + offset-mapped caret, suppress outbound echo until Monaco
+ * finishes emitting content events, and throttle remote cursor sends to rAF.
  */
 
-import { lazy, Suspense, useEffect, useRef, useCallback } from 'react';
+import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react';
 import type { OnMount, OnChange } from '@monaco-editor/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { useCursorSocket } from '@/hooks/useCursorSocket';
+import { useCursorSocket, type CursorSelectionData } from '@/hooks/useCursorSocket';
+import { useRoomCodeSync } from '@/hooks/useRoomCodeSync';
+import { applyRemoteMonacoDocument, runRemoteDocumentApply } from '@/utils/applyRemoteMonacoDocument';
+import { useRafThrottleCallback } from '@/hooks/useRafThrottleCallback';
+import { cursorDecorationKey } from '@/utils/cursorDecorationKey';
 import styles from './CodeViewer.module.css';
 
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
 type Monaco                = Parameters<OnMount>[1];
+
+/** LanguageSelector values → Monaco language ids */
+const MONACO_LANG: Record<string, string> = {
+  Python:     'python',
+  Java:       'java',
+  Kotlin:     'kotlin',
+  JavaScript: 'javascript',
+  'C++':      'cpp',
+  Bash:       'shell',
+};
+
+function toMonacoLanguage(id: string): string {
+  return MONACO_LANG[id] ?? id.toLowerCase();
+}
 
 const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
   fontSize:             15,
@@ -52,10 +52,8 @@ const EDITOR_FALLBACK = <div className={styles.editorFallback} />;
 export interface CodeViewerProps {
   idRoom:           string;
   token:            string;
-  /** Controlled by parent — drives Monaco language mode. */
   language:         string;
   onLanguageChange: (lang: string) => void;
-  /** Controlled by parent — gates sendCursorPosition calls. */
   showCursor:       boolean;
   onConnect:        () => void;
   onError:          (msg: string) => void;
@@ -71,56 +69,62 @@ export default function CodeViewer({
   onError,
 }: CodeViewerProps) {
 
-  // ── Refs ──────────────────────────────────────────────────────────────
-
   const editorRef      = useRef<IStandaloneCodeEditor | null>(null);
   const monacoRef      = useRef<Monaco | null>(null);
   const decorationsRef = useRef<string[]>([]);
   const initialCodeRef = useRef<string | null>(null);
   const initialLangRef = useRef<string | null>(null);
-  /**
-   * Always holds the latest liveCode.textContent.
-   * Written before calling setValue() so handleEditorMount can apply the
-   * correct value even when Monaco mounts after the first liveCode update.
-   */
   const liveCodeRef    = useRef<string | null>(null);
-  /**
-   * Mirrors the showCursor prop inside the stable handleEditorMount callback.
-   * Using a ref avoids re-registering the Monaco cursor listener on every toggle.
-   */
+  const suppressOutboundRef = useRef(false);
+  const skipNextLanguageSendRef = useRef(false);
+  const languageRef = useRef(language);
+  const lastLocalEditAtRef = useRef(0);
+  const lastCursorKeyRef = useRef('');
+  const [editorMountTick, setEditorMountTick] = useState(0);
+  const [blurTick, setBlurTick] = useState(0);
+  const blurEditorDisposableRef = useRef<{ dispose: () => void } | null>(null);
   const showCursorRef  = useRef(showCursor);
+
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
 
   useEffect(() => {
     showCursorRef.current = showCursor;
   }, [showCursor]);
 
-  /** Tracks previous showCursor value to detect true→false transitions. */
   const prevShowCursorRef = useRef(showCursor);
 
-  // ── WebSocket ─────────────────────────────────────────────────────────
-
-  const { liveCode, liveCursor, isConnected, error, sendCode } = useWebSocket({
+  const { liveCode, isConnected, error, sendCode, seedLatestText, flushSend } = useWebSocket({
     idRoom,
     role:       'interviewer',
     token,
-    idLanguage: language, // keep hook's idLanguageRef in sync with parent language
+    idLanguage: language,
   });
   const {
     error:              cursorError,
     cursorFromCandidate,
     sendCursorPosition,
     sendCursorHide,
+    invalidatePeerCursor,
   } = useCursorSocket({
     interviewId: idRoom,
     role: 'interviewer',
   });
 
-  // ── Notify parent of connection events ────────────────────────────────
+  const sendCursorPositionRaf = useRafThrottleCallback(
+    useCallback(
+      (line: number, column: number, sel?: CursorSelectionData) => {
+        sendCursorPosition(line, column, sel);
+      },
+      [sendCursorPosition],
+    ),
+  );
+
+  useEffect(() => { if (liveCode) liveCodeRef.current = liveCode.textContent; }, [liveCode]);
 
   useEffect(() => { if (isConnected) onConnect(); }, [isConnected, onConnect]);
   useEffect(() => { if (error)       onError(error); }, [error, onError]);
-
-  // ── Cursor hide signal — fires when showCursor transitions true→false ─
 
   useEffect(() => {
     const prev = prevShowCursorRef.current;
@@ -130,7 +134,26 @@ export default function CodeViewer({
     }
   }, [showCursor, sendCursorHide]);
 
-  // ── Initial code snapshot ─────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      blurEditorDisposableRef.current?.dispose();
+      blurEditorDisposableRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        lastLocalEditAtRef.current = 0;
+        const ed = editorRef.current;
+        if (ed) flushSend(ed.getValue());
+        else flushSend();
+        setBlurTick((n) => n + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [flushSend]);
 
   useEffect(() => {
     async function fetchInitialCode() {
@@ -148,90 +171,106 @@ export default function CodeViewer({
         onLanguageChange(lang);
 
         if (editorRef.current) {
-          editorRef.current.setValue(code);
+          runRemoteDocumentApply(suppressOutboundRef, () => {
+            applyRemoteMonacoDocument(editorRef.current!, code);
+          });
+          seedLatestText(editorRef.current.getValue());
           const model = editorRef.current.getModel();
           if (model && monacoRef.current) {
-            monacoRef.current.editor.setModelLanguage(model, lang);
+            monacoRef.current.editor.setModelLanguage(model, toMonacoLanguage(lang));
           }
         }
       } catch {
-        // Non-fatal — WS stream will populate content
+        // Non-fatal — WS will populate content
       }
     }
     void fetchInitialCode();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [seedLatestText]); // eslint-disable-line react-hooks/exhaustive-deps -- idRoom/token stable
 
-  // ── liveCode → setValue() ─────────────────────────────────────────────
-  // Echo suppression: if the content arriving from STOMP is identical to
-  // what's already in the editor (our own edit echoed back), skip setValue.
-  // This prevents the cursor position from being reset when the interviewer
-  // is actively typing.
-
-  useEffect(() => {
-    if (liveCode === null) return;
-    liveCodeRef.current = liveCode.textContent;
-    const editor = editorRef.current;
-    if (!editor) return;
-    if (editor.getValue() === liveCode.textContent) return; // suppress own echo
-    editor.setValue(liveCode.textContent);
-  }, [liveCode]);
-
-  // ── liveCursor → deltaDecorations ────────────────────────────────────
+  useRoomCodeSync({
+    liveCode,
+    editorRef,
+    monacoRef,
+    languageRef,
+    onPeerLanguage:         onLanguageChange,
+    skipNextLanguageSendRef,
+    lastLocalEditAtRef,
+    blurTick,
+    seedLatestText,
+    suppressOutboundRef,
+    toMonacoLanguage,
+    invalidatePeerCursor,
+  });
 
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
 
-    const sourceCursor = cursorFromCandidate
-      ? { cursorLine: cursorFromCandidate.line, cursorCh: cursorFromCandidate.column }
-      : liveCursor;
-    if (!sourceCursor) return;
+    const key = cursorDecorationKey(cursorFromCandidate ?? null);
+    if (key === lastCursorKeyRef.current) return;
+    lastCursorKeyRef.current = key;
 
-    const newIds = editor.deltaDecorations(decorationsRef.current, [
+    if (!cursorFromCandidate) {
+      decorationsRef.current = editor.deltaDecorations(decorationsRef.current, []);
+      return;
+    }
+
+    const model = editor.getModel();
+    if (!model) return;
+    const clampLine = (l: number) => Math.min(Math.max(l, 1), model.getLineCount());
+    const clampCol  = (l: number, c: number) =>
+      Math.min(Math.max(c, 1), model.getLineMaxColumn(l));
+    const line = clampLine(cursorFromCandidate.line);
+    const col  = clampCol(line, cursorFromCandidate.column);
+
+    decorationsRef.current = editor.deltaDecorations(decorationsRef.current, [
       {
         range: {
-          startLineNumber: sourceCursor.cursorLine,
-          startColumn:     sourceCursor.cursorCh,
-          endLineNumber:   sourceCursor.cursorLine,
-          endColumn:       sourceCursor.cursorCh,
+          startLineNumber: line,
+          startColumn:     col,
+          endLineNumber:   line,
+          endColumn:       col,
         },
         options: { className: 'candidate-cursor-decoration' },
       },
     ]);
-    decorationsRef.current = newIds;
-  }, [liveCursor, cursorFromCandidate]);
-
-  // ── language prop → setModelLanguage ─────────────────────────────────
+  }, [cursorFromCandidate, editorMountTick]);
 
   useEffect(() => {
     const model = editorRef.current?.getModel();
     if (model && monacoRef.current) {
-      monacoRef.current.editor.setModelLanguage(model, language);
+      monacoRef.current.editor.setModelLanguage(model, toMonacoLanguage(language));
     }
   }, [language]);
 
-  // ── onChange — interviewer edits ──────────────────────────────────────
+  const prevLanguageRef = useRef(language);
+  useEffect(() => {
+    if (prevLanguageRef.current === language) return;
+    prevLanguageRef.current = language;
+    if (skipNextLanguageSendRef.current) {
+      skipNextLanguageSendRef.current = false;
+      return;
+    }
+    sendCode(editorRef.current?.getValue() ?? '');
+  }, [language, sendCode]);
 
   const handleEditorChange = useCallback<OnChange>((value) => {
+    if (suppressOutboundRef.current) return;
+    lastLocalEditAtRef.current = Date.now();
     sendCode(value ?? '');
   }, [sendCode]);
-
-  // ── onMount ───────────────────────────────────────────────────────────
 
   const handleEditorMount = useCallback<OnMount>((editor, monaco) => {
     editorRef.current  = editor;
     monacoRef.current  = monaco;
 
-    // Use onDidChangeCursorSelection to capture both cursor moves and selections.
     editor.onDidChangeCursorSelection((e) => {
       if (!showCursorRef.current) return;
       const sel = e.selection;
       if (sel.isEmpty()) {
-        // Plain cursor move — no selection
-        sendCursorPosition(sel.positionLineNumber, sel.positionColumn);
+        sendCursorPositionRaf(sel.positionLineNumber, sel.positionColumn);
       } else {
-        // Interviewer has a text range selected — send selection bounds too
-        sendCursorPosition(sel.positionLineNumber, sel.positionColumn, {
+        sendCursorPositionRaf(sel.positionLineNumber, sel.positionColumn, {
           selStartLine: sel.startLineNumber,
           selStartCol:  sel.startColumn,
           selEndLine:   sel.endLineNumber,
@@ -240,22 +279,32 @@ export default function CodeViewer({
       }
     });
 
-    // Apply the best available snapshot — liveCodeRef preferred over initialCodeRef
+    blurEditorDisposableRef.current?.dispose();
+    blurEditorDisposableRef.current = editor.onDidBlurEditorWidget(() => {
+      lastLocalEditAtRef.current = 0;
+      flushSend(editor.getValue());
+      setBlurTick((n) => n + 1);
+    });
+
     const code = liveCodeRef.current ?? initialCodeRef.current;
-    if (code !== null) editor.setValue(code);
+    if (code !== null) {
+      runRemoteDocumentApply(suppressOutboundRef, () => {
+        applyRemoteMonacoDocument(editor, code);
+      });
+    }
 
     if (initialLangRef.current !== null) {
       const model = editor.getModel();
-      if (model) monaco.editor.setModelLanguage(model, initialLangRef.current);
+      if (model) monaco.editor.setModelLanguage(model, toMonacoLanguage(initialLangRef.current));
     }
-  }, [sendCursorPosition]); // stable — registered once on Monaco first mount
 
-  // ── Render ────────────────────────────────────────────────────────────
+    seedLatestText(editor.getValue());
+    setEditorMountTick((n) => n + 1);
+  }, [sendCursorPositionRaf, flushSend, seedLatestText]);
 
   return (
     <div className={styles.codeViewerRoot}>
 
-      {/* Error banner — inside the editor area, not in the page header */}
       {(error !== null || cursorError !== null) && (
         <div className={styles.errorBanner} role="alert">
           Соединение потеряно. Проверьте каналы code/cursor.

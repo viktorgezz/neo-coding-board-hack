@@ -43,6 +43,8 @@ interface UseCursorSocketResult {
   sendCursorPosition:   (line: number, column: number, sel?: CursorSelectionData) => void;
   /** Send an explicit "cursor hidden" signal to clear the remote decoration. */
   sendCursorHide:       () => void;
+  /** Clears the peer's remote cursor state (e.g. after their code was applied — stale line/col). */
+  invalidatePeerCursor: () => void;
 }
 
 const BACKOFF_MS: [number, number, number] = [1000, 2000, 4000];
@@ -150,6 +152,14 @@ export function useCursorSocket({
     ws.send(JSON.stringify({ line: -1, column: -1 } satisfies CursorInMessage));
   }, []);
 
+  const invalidatePeerCursor = useCallback(() => {
+    if (role === 'candidate') {
+      setCursorFromInterviewer(null);
+    } else {
+      setCursorFromCandidate(null);
+    }
+  }, [role]);
+
   return {
     isConnected,
     error,
@@ -157,5 +167,6 @@ export function useCursorSocket({
     cursorFromInterviewer,
     sendCursorPosition,
     sendCursorHide,
+    invalidatePeerCursor,
   };
 }

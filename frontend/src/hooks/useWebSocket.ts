@@ -1,51 +1,51 @@
 /**
- * useWebSocket — STOMP-over-WebSocket hook for Neo Coding Board.
+ * useWebSocket — raw WebSocket to WSCodeService (NEO Code WS).
  *
- * Abstracts the full STOMP lifecycle (connect → subscribe → send →
- * reconnect → cleanup) for both roles:
+ * Endpoint: `${VITE_CODE_WS_BASE_URL}/ws/{idRoom}/{role}` — role is
+ * `candidate` | `interviewer`. First server message is `snapshot`; peers
+ * receive `update` after each valid client payload. The sender does not
+ * get an echo (see WSCodeService README).
  *
- *   candidate  — sends textContent (debounced 300ms) + cursor (immediate).
- *                No subscription created. Token from candidateSession.
+ * REST `GET .../code/latest` in pages bootstraps the editor when the WS
+ * snapshot is empty (version 0) — the hook skips applying that snapshot
+ * so it does not clear REST-loaded content.
  *
- *   interviewer — fetches initial code state on connect, then subscribes
- *                 to /topic/code/{idRoom}/stream for live updates.
- *                 No publish. Token from useAuth().
- *
- * This hook does NOT call useAuth() — token is provided by the caller so
- * both roles can use the same hook without coupling to the auth layer.
- * It does NOT navigate on error — errors surface via the `error` field only.
+ * Cursor positions use useCursorSocket, not this hook.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Client, type IFrame, type StompSubscription } from '@stomp/stompjs';
+
+// ---------------------------------------------------------------------------
+// WSCodeService message shapes (snake_case on the wire)
+// ---------------------------------------------------------------------------
+
+interface WsSnapshotMessage {
+  type:          'snapshot';
+  text_content:  string;
+  id_language:   string;
+  version:       number;
+}
+
+interface WsUpdateMessage {
+  type:          'update';
+  text_content:  string;
+  id_language:   string;
+  version:       number;
+  from_role:     'candidate' | 'interviewer';
+  timestamp:     number;
+}
+
+type WsInbound = WsSnapshotMessage | WsUpdateMessage | { error?: string };
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-export interface CandidateCodePayload {
+export interface LiveCodeState {
   textContent: string;
   idLanguage:  string;
-  cursorLine:  number;
-  cursorCh:    number;
-}
-
-export interface InterviewerCodeUpdate {
-  textContent:   string;
-  idParticipant: string;
-  cursorLine:    number;
-  cursorCh:      number;
-}
-
-export interface LiveCodeState {
-  textContent:   string;
-  idParticipant: string | null;
-}
-
-export interface LiveCursorState {
-  cursorLine:    number;
-  cursorCh:      number;
-  idParticipant: string | null;
+  /** Server monotonic version — used to skip duplicate React updates. */
+  version:     number;
 }
 
 export type WebSocketRole = 'candidate' | 'interviewer';
@@ -53,41 +53,38 @@ export type WebSocketRole = 'candidate' | 'interviewer';
 export interface UseWebSocketParams {
   idRoom:      string;
   role:        WebSocketRole;
-  /** candidate: getCandidateToken(), interviewer: token from useAuth() */
+  /** Unused by WSCodeService; kept for API compatibility with callers. */
   token:       string;
-  /** candidate only — current language selection; synced to a ref via a separate useEffect */
   idLanguage?: string;
 }
 
 export interface UseWebSocketReturn {
-  /** candidate only — debounced 300ms internally */
-  sendCode:    (textContent: string) => void;
-  /** candidate only — immediate, no debounce */
-  sendCursor:  (line: number, ch: number) => void;
-  /** interviewer only — null until first message or initial fetch */
-  liveCode:    LiveCodeState | null;
-  /** interviewer only — null until first message */
-  liveCursor:  LiveCursorState | null;
-  isConnected: boolean;
-  error:       string | null;
+  sendCode:       (textContent: string) => void;
+  /** Sync ref when editor text comes from REST/defaultValue without onChange (avoids empty flush). */
+  seedLatestText: (textContent: string) => void;
+  /** Sends immediately; pass `editor.getValue()` so flush never wipes the room with stale ''. */
+  flushSend:      (textOverride?: string) => void;
+  liveCode:       LiveCodeState | null;
+  isConnected:    boolean;
+  error:          string | null;
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Config
 // ---------------------------------------------------------------------------
 
-/**
- * Converts the current page origin to a WebSocket base URL.
- * Pure string transform — no environment variable, no hardcoded host.
- */
-function getWebSocketBaseURL(): string {
-  const { protocol, host } = window.location;
-  const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${wsProtocol}//${host}`;
+function getCodeSocketBaseUrl(): string {
+  const configured = import.meta.env.VITE_CODE_WS_BASE_URL as string | undefined;
+  if (configured && configured.trim()) {
+    return configured.trim().replace(/\/$/, '');
+  }
+  return 'ws://111.88.127.60:8003';
 }
 
-/** Indexed by attempt number (0-based): 1s → 2s → 4s, then stop. */
 const BACKOFF_DELAYS: [number, number, number] = [1000, 2000, 4000];
+
+/** Short debounce — long delays let peer full snapshots overwrite unsent local edits */
+const SEND_DEBOUNCE_MS = 55;
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -99,259 +96,173 @@ export function useWebSocket({
   token,
   idLanguage = '',
 }: UseWebSocketParams): UseWebSocketReturn {
+  void token;
 
-  // ── Refs — never trigger re-renders ───────────────────────────────────
-
-  /** The live STOMP client instance. Never put in state — reconnects would re-render. */
-  const clientRef         = useRef<Client | null>(null);
-  /** Active subscription handle (interviewer only). */
-  const subscriptionRef   = useRef<StompSubscription | null>(null);
-  /** Debounce timer ID for sendCode. */
-  const debounceTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Reconnect backoff timer ID. */
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** 0–3; reset to 0 on successful connect. */
+  const wsRef               = useRef<WebSocket | null>(null);
+  const debounceTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  /** Last known cursor position — read by sendCode to piggy-back onto the payload. */
-  const cursorRef         = useRef<{ line: number; ch: number }>({ line: 0, ch: 0 });
-  /**
-   * Last textContent passed to sendCode — updated synchronously before the
-   * debounce timer fires so sendCursor always piggy-backs the current code.
-   */
-  const textContentRef    = useRef('');
-  /** Mirrors the idLanguage prop. Updated via a separate useEffect. */
-  const idLanguageRef     = useRef(idLanguage);
-  /**
-   * Set to true just before intentional deactivation (component unmount) so
-   * the onDisconnect callback does NOT schedule a reconnect for a deliberate
-   * teardown.
-   */
-  const isUnmountingRef   = useRef(false);
+  const idLanguageRef       = useRef(idLanguage);
+  const latestTextRef       = useRef('');
+  const isUnmountingRef     = useRef(false);
 
-  // ── State — one update per discrete user-visible change ───────────────
-
-  const [isConnected,      setIsConnected]      = useState(false);
-  const [error,            setError]            = useState<string | null>(null);
-  const [liveCode,         setLiveCode]         = useState<LiveCodeState | null>(null);
-  const [liveCursor,       setLiveCursor]       = useState<LiveCursorState | null>(null);
-
-  // ── idLanguage prop → ref sync ────────────────────────────────────────
-  // Separate effect so it does NOT re-run the main STOMP effect when the
-  // language selection changes.
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [liveCode, setLiveCode]       = useState<LiveCodeState | null>(null);
+  /** Dedupe identical wire duplicates only — do NOT gate by version vs UI apply */
+  const lastWireSnapshotRef = useRef<{ v: number; t: string } | null>(null);
+  const lastWireUpdateRef   = useRef<{ v: number; t: string; lang: string } | null>(null);
 
   useEffect(() => {
-    if (idLanguage) {
-      idLanguageRef.current = idLanguage;
-    }
+    idLanguageRef.current = idLanguage ?? '';
   }, [idLanguage]);
 
-  // ── Main STOMP effect — runs exactly once ─────────────────────────────
-
   useEffect(() => {
-
-    // ── Reconnect scheduler ────────────────────────────────────────────
-
     function scheduleReconnect(): void {
       if (reconnectAttemptsRef.current >= 3) {
         setError('Connection failed after 3 attempts. Please refresh the page.');
         return;
       }
-
       const delay = BACKOFF_DELAYS[reconnectAttemptsRef.current];
       reconnectAttemptsRef.current += 1;
-
       reconnectTimerRef.current = setTimeout(() => {
-        clientRef.current?.activate();
+        connect();
       }, delay);
     }
 
-    // ── STOMP error handlers ───────────────────────────────────────────
-
-    function handleStompError(frame: IFrame): void {
-      setError(`STOMP error: ${frame.headers['message'] ?? 'Unknown error'}`);
-      setIsConnected(false);
-      scheduleReconnect();
-    }
-
-    function handleWebSocketError(_event: Event): void {
-      setError('WebSocket connection lost.');
-      setIsConnected(false);
-      scheduleReconnect();
-    }
-
-    function handleDisconnect(_frame: IFrame): void {
-      // Guard: if we're intentionally unmounting, do not schedule reconnect —
-      // that would re-activate the client after the cleanup has already run.
-      if (isUnmountingRef.current) return;
-      setIsConnected(false);
-      scheduleReconnect();
-    }
-
-    // ── onConnect callback ─────────────────────────────────────────────
-
-    async function handleConnect(): Promise<void> {
-      // Successful (re)connect — reset backoff counter
-      reconnectAttemptsRef.current = 0;
-      setIsConnected(true);
-      setError(null);
-
-      if (role === 'interviewer') {
-        // 1. Fetch the latest code snapshot before subscribing.
-        //    Non-fatal: WS stream will populate state as candidate types.
-        try {
-          const res = await fetch(`/api/v1/rooms/${idRoom}/code/latest`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json() as { textContent: string; idLanguage: string };
-            setLiveCode({ textContent: data.textContent, idParticipant: null });
-          }
-        } catch {
-          // Intentionally swallow — non-fatal, WS stream covers live updates
-        }
-
-        // 2. Subscribe to the live stream — trailing /stream is mandatory.
-        const client = clientRef.current;
-        if (client) {
-          subscriptionRef.current = client.subscribe(
-            `/topic/code/${idRoom}/stream`,
-            (message) => {
-              const update = JSON.parse(message.body) as InterviewerCodeUpdate;
-
-              // Update liveCode and liveCursor atomically (two setState calls in
-              // the same synchronous handler — React 18 batches them into one render)
-              setLiveCode({
-                textContent:   update.textContent,
-                idParticipant: update.idParticipant,
-              });
-              setLiveCursor({
-                cursorLine:    update.cursorLine,
-                cursorCh:      update.cursorCh,
-                idParticipant: update.idParticipant,
-              });
-            },
-          );
-        }
+    function handleMessage(raw: string): void {
+      let msg: WsInbound;
+      try {
+        msg = JSON.parse(raw) as WsInbound;
+      } catch {
+        return;
       }
-      // candidate: sending is handled by sendCode() and sendCursor() below.
+      if ('error' in msg && msg.error) {
+        setError('invalid_code_payload from server');
+        return;
+      }
+      if (!('type' in msg)) return;
+
+      if (msg.type === 'snapshot') {
+        const s = msg as WsSnapshotMessage;
+        if (s.version === 0 && s.text_content === '') {
+          return;
+        }
+        const dup = lastWireSnapshotRef.current;
+        if (dup && dup.v === s.version && dup.t === s.text_content) {
+          return;
+        }
+        lastWireSnapshotRef.current = { v: s.version, t: s.text_content };
+        setLiveCode({
+          textContent: s.text_content,
+          idLanguage:  s.id_language || 'plaintext',
+          version:     s.version,
+        });
+        return;
+      }
+      if (msg.type === 'update') {
+        const u = msg as WsUpdateMessage;
+        const lang = u.id_language || 'plaintext';
+        const dup = lastWireUpdateRef.current;
+        if (dup && dup.v === u.version && dup.t === u.text_content && dup.lang === lang) {
+          return;
+        }
+        lastWireUpdateRef.current = { v: u.version, t: u.text_content, lang };
+        setLiveCode({
+          textContent: u.text_content,
+          idLanguage:  lang,
+          version:     u.version,
+        });
+      }
     }
 
-    // ── Create and activate STOMP client ──────────────────────────────
+    function connect(): void {
+      const base = getCodeSocketBaseUrl();
+      const ws = new WebSocket(`${base}/ws/${encodeURIComponent(idRoom)}/${role}`);
+      wsRef.current = ws;
 
-    const client = new Client({
-      brokerURL: `${getWebSocketBaseURL()}/ws`,
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,
-      },
-      // Disable built-in reconnect — we implement manual exponential backoff
-      // so we can cap attempts at 3 and surface errors to the UI.
-      reconnectDelay: 0,
-      onConnect:        () => { void handleConnect(); },
-      onStompError:     handleStompError,
-      onDisconnect:     handleDisconnect,
-      onWebSocketError: handleWebSocketError,
-    });
+      ws.onopen = () => {
+        reconnectAttemptsRef.current = 0;
+        lastWireSnapshotRef.current = null;
+        lastWireUpdateRef.current = null;
+        setIsConnected(true);
+        setError(null);
+      };
 
-    clientRef.current = client;
-    client.activate();
+      ws.onmessage = (event) => {
+        handleMessage(event.data as string);
+      };
 
-    // ── Cleanup on unmount ─────────────────────────────────────────────
+      ws.onerror = () => {
+        setError('WebSocket connection lost.');
+      };
+
+      ws.onclose = () => {
+        setIsConnected(false);
+        wsRef.current = null;
+        if (isUnmountingRef.current) return;
+        scheduleReconnect();
+      };
+    }
+
+    isUnmountingRef.current = false;
+    connect();
 
     return () => {
-      // Signal to handleDisconnect that this is intentional teardown
       isUnmountingRef.current = true;
-
-      // 1. Cancel pending debounce — prevents a stale publish after unmount
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
       }
-      // 2. Cancel pending reconnect timer
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
       }
-      // 3. Unsubscribe from the live stream (interviewer only)
-      subscriptionRef.current?.unsubscribe();
-      // 4. Gracefully shut down the STOMP client
-      void clientRef.current?.deactivate();
+      wsRef.current?.close();
+      wsRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // ↑ Empty deps: idRoom, role, token are stable for the lifetime of this
-  //   hook (the component that mounts this is tied to a single room session).
-  //   idLanguage syncs via its own effect above.
-
-  // ── sendCode — stable ref, debounced 300ms ────────────────────────────
 
   const sendCode = useCallback((textContent: string) => {
-    // Update textContentRef synchronously — sendCursor reads this ref to
-    // piggy-back the latest code onto every cursor publish.
-    textContentRef.current = textContent;
-
+    latestTextRef.current = textContent;
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(() => {
-      const client = clientRef.current;
-      if (!client || !client.connected) return;
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-      // Candidate payload includes live cursor position.
-      // Interviewer payload omits cursor (0,0 would corrupt candidate cursor display).
-      const payload: CandidateCodePayload = role === 'candidate' ? {
-        textContent,
-        idLanguage: idLanguageRef.current,
-        cursorLine: cursorRef.current.line,
-        cursorCh:   cursorRef.current.ch,
-      } : {
-        textContent,
-        idLanguage: idLanguageRef.current,
-        cursorLine: 0,
-        cursorCh:   0,
+      const payload = {
+        text_content: latestTextRef.current,
+        id_language:  idLanguageRef.current || '',
       };
+      ws.send(JSON.stringify(payload));
+    }, SEND_DEBOUNCE_MS);
+  }, []);
 
-      client.publish({
-        destination: `/app/code/${idRoom}/update`,
-        body: JSON.stringify(payload),
-      });
-    }, 300);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // ↑ Empty deps: closures over refs (always current via .current) and
-  //   idRoom/role (stable for the session). New function identity never needed.
+  const seedLatestText = useCallback((textContent: string) => {
+    latestTextRef.current = textContent;
+  }, []);
 
-  // ── sendCursor — stable ref, immediate ───────────────────────────────
-
-  const sendCursor = useCallback((line: number, ch: number) => {
-    if (role !== 'candidate') return;
-
-    // Always update the ref — even when not connected — so the next sendCode
-    // debounce batch includes the correct cursor position.
-    cursorRef.current = { line, ch };
-
-    const client = clientRef.current;
-    if (!client || !client.connected) return;
-
-    // Send a full payload immediately. The backend uses the same destination
-    // for both text and cursor events — the server distinguishes them by
-    // whether textContent has changed.
-    const payload: CandidateCodePayload = {
-      textContent: textContentRef.current,
-      idLanguage:  idLanguageRef.current,
-      cursorLine:  line,
-      cursorCh:    ch,
-    };
-
-    client.publish({
-      destination: `/app/code/${idRoom}/update`,
-      body: JSON.stringify(payload),
-    });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Return ─────────────────────────────────────────────────────────────
+  const flushSend = useCallback((textOverride?: string) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    const text = textOverride !== undefined ? textOverride : latestTextRef.current;
+    latestTextRef.current = text;
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({
+      text_content: text,
+      id_language:  idLanguageRef.current || '',
+    }));
+  }, []);
 
   return {
     sendCode,
-    sendCursor,
+    seedLatestText,
+    flushSend,
     liveCode,
-    liveCursor,
     isConnected,
     error,
   };
