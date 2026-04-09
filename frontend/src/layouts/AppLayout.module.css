@@ -1,29 +1,16 @@
-/*
- * AppLayout styles — CSS Modules.
- *
- * Naming mirrors the DOM spec exactly: appShell, sidebar, sidebarTop,
- * sidebarNav, sidebarBottom, userInfo, userName, userRole, logoutBtn,
- * mainContent, navItem, navItemActive.
- *
- * --sidebar-width is a CSS custom property so any future resize can be done
- * in one place. Mobile overlay uses position:fixed at this same width.
- */
-
 :root {
   --sidebar-width: 220px;
-  --sidebar-bg: #0a0a0a;
-  --sidebar-border: #1a1a1a;
-  --nav-active-accent: #7c3aed;
 }
 
 /* ── Shell ────────────────────────────────────────────────────────────── */
 
 .appShell {
   display: flex;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  /* width: 100vw intentionally removed — 100vw includes scrollbar width
+     and causes horizontal overflow. width: 100% respects the parent. */
   overflow: hidden;
-  background: #111;
+  background: var(--bg-page);
 }
 
 /* ── Sidebar ──────────────────────────────────────────────────────────── */
@@ -35,11 +22,10 @@
   position: sticky;
   top: 0;
   overflow-y: auto;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--sidebar-border);
+  background: var(--bg-page);
+  border-right: var(--border-default);
   display: flex;
   flex-direction: column;
-  /* NO transition — spec requires instant state changes */
 }
 
 .sidebarTop {
@@ -47,17 +33,18 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
-  border-bottom: 1px solid var(--sidebar-border);
+  border-bottom: var(--border-default);
   flex-shrink: 0;
 }
 
 .sidebarTop span {
   font-size: 11px;
-  letter-spacing: 0.1em;
-  color: #555;
-  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  font-weight: 600;
   font-family: ui-sans-serif, system-ui, sans-serif;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .sidebarNav {
@@ -70,7 +57,7 @@
 
 .sidebarBottom {
   padding: 12px;
-  border-top: 1px solid var(--sidebar-border);
+  border-top: var(--border-default);
   flex-shrink: 0;
 }
 
@@ -85,7 +72,7 @@
   display: block;
   font-size: 13px;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #e5e5e5;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -95,7 +82,7 @@
   display: block;
   font-size: 11px;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #555;
+  color: var(--text-muted);
   margin-top: 2px;
 }
 
@@ -108,23 +95,16 @@
   cursor: pointer;
   font-size: 12px;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #555;
+  color: var(--text-muted);
   line-height: 1;
 }
 
 .logoutBtn:hover {
-  color: #e5e5e5;
+  color: var(--text-primary);
 }
 
 /* ── Nav items ────────────────────────────────────────────────────────── */
 
-/*
- * The 2px transparent border-left on every item (default and hover) reserves
- * the same horizontal space as the active state's colored border, preventing
- * any layout shift when an item becomes active.
- * Effective left padding: 2px (border) + 8px (padding-left) = 10px,
- * which equals the 10px right padding — visually balanced.
- */
 .navItem {
   display: flex;
   align-items: center;
@@ -135,28 +115,27 @@
   border-radius: 6px;
   text-decoration: none;
   font-size: 13px;
-  font-weight: 450; /* variable-font only; falls back to 400 */
   font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #888;
+  color: var(--text-muted);
   background: transparent;
-  /* NO transition property — instant color/background change */
 }
 
 .navItem:hover {
-  background: #141414;
-  color: #e5e5e5;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
 }
 
 .navItemActive {
-  background: #141414;
-  color: #e5e5e5;
-  border-left-color: var(--nav-active-accent);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  border-left-color: #6060a0;
 }
 
 /* ── Main content ─────────────────────────────────────────────────────── */
 
 .mainContent {
   flex: 1;
+  overflow-x: hidden;  /* never allow horizontal scroll in content area */
   overflow-y: auto;
   min-width: 0;
 }
@@ -164,28 +143,29 @@
 /* ── Mobile top bar ───────────────────────────────────────────────────── */
 
 .mobileTopBar {
-  display: none; /* hidden on desktop; shown via media query below */
+  display: none;
   height: 44px;
   flex-shrink: 0;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   padding: 0 16px;
-  background: var(--sidebar-bg);
-  border-bottom: 1px solid var(--sidebar-border);
+  background: var(--bg-page);
+  border-bottom: var(--border-default);
 }
 
 .mobileTopBarWordmark {
   font-size: 11px;
-  letter-spacing: 0.1em;
-  color: #555;
-  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  font-weight: 600;
   font-family: ui-sans-serif, system-ui, sans-serif;
+  text-transform: uppercase;
 }
 
 .mobileMenuBtn {
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
   display: flex;
@@ -194,7 +174,7 @@
 }
 
 .mobileMenuBtn:hover {
-  color: #e5e5e5;
+  color: var(--text-primary);
 }
 
 /* ── Mobile overlay ───────────────────────────────────────────────────── */
@@ -212,7 +192,6 @@
   left: 0;
   z-index: 50;
   height: 100vh;
-  /* NO transition — spec: no animate sidebar open/close */
 }
 
 /* ── Responsive breakpoint ────────────────────────────────────────────── */
@@ -222,13 +201,17 @@
     flex-direction: column;
   }
 
-  /* Hide the persistent sidebar; replaced by the overlay when needed */
   .sidebar {
     display: none;
   }
 
-  /* Show the top bar */
   .mobileTopBar {
+    display: flex;
+  }
+
+  /* Override sidebar's display:none for the fixed overlay — must come
+     after .sidebar rule so it wins at equal specificity */
+  .sidebarOverlay {
     display: flex;
   }
 }

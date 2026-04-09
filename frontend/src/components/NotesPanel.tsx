@@ -13,56 +13,54 @@
 import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from 'react';
 import NoteRow from './NoteRow';
 import type { NoteResponse } from './NoteRow';
-import InterviewTimer from './InterviewTimer';
 import styles from './NotesPanel.module.css';
 
 interface NoteListPage {
   content: NoteResponse[];
 }
 
-export interface NotesPanelProps {
-  idRoom:    string;
-  token:     string;
-  startTime: number;    // Date.now() at room mount — for InterviewTimer
-  onFinish:  () => void; // opens VerdictModal
-}
-
 type DifficultyLevel = 'easy' | 'medium' | 'hard';
 
 interface CategoryRead {
-  id: number;
+  id:   number;
   name: string;
 }
 
 interface TaskRead {
-  id: number;
-  title: string;
-  statement: string;
-  difficulty: DifficultyLevel;
+  id:          number;
+  title:       string;
+  statement:   string;
+  difficulty:  DifficultyLevel;
   category_id: number;
 }
 
 const TASKS_BANK_BASE_URL = (
   import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
-  ?? 'http://72.56.248.147:8001'
+  ?? '/tasks-api'
 ).replace(/\/$/, '');
+
+export interface NotesPanelProps {
+  idRoom:   string;
+  token:    string;
+  onFinish: () => void; // opens VerdictModal
+}
 
 export default function NotesPanel({
   idRoom,
   token,
-  startTime,
   onFinish,
 }: NotesPanelProps) {
-  const [notes,            setNotes]            = useState<NoteResponse[]>([]);
-  const [noteInput,        setNoteInput]        = useState('');
-  const [isSubmittingNote, setIsSubmittingNote] = useState(false);
-  const [taskCategories,   setTaskCategories]   = useState<CategoryRead[]>([]);
-  const [tasks,            setTasks]            = useState<TaskRead[]>([]);
-  const [tasksLoading,     setTasksLoading]     = useState(false);
-  const [tasksError,       setTasksError]       = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [notes,              setNotes]              = useState<NoteResponse[]>([]);
+  const [noteInput,          setNoteInput]          = useState('');
+  const [isSubmittingNote,   setIsSubmittingNote]   = useState(false);
+  const [taskCategories,     setTaskCategories]     = useState<CategoryRead[]>([]);
+  const [tasks,              setTasks]              = useState<TaskRead[]>([]);
+  const [tasksLoading,       setTasksLoading]       = useState(false);
+  const [tasksError,         setTasksError]         = useState<string | null>(null);
+  const [selectedCategory,   setSelectedCategory]   = useState<number | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef     = useRef<HTMLInputElement | null>(null);
+  const notesListRef = useRef<HTMLDivElement | null>(null);
 
   // ── Mount: fetch existing notes ────────────────────────────────────────
 
@@ -85,6 +83,8 @@ export default function NotesPanel({
   }, [idRoom]); // eslint-disable-line react-hooks/exhaustive-deps
   // token is stable for session lifetime; idRoom identifies the resource
 
+  // ── Task bank: fetch categories (once on mount) ────────────────────────
+
   useEffect(() => {
     async function fetchTaskCategories() {
       try {
@@ -99,17 +99,19 @@ export default function NotesPanel({
     void fetchTaskCategories();
   }, []);
 
+  // ── Task bank: fetch tasks when filters change ─────────────────────────
+
   useEffect(() => {
     async function fetchTasks() {
       setTasksLoading(true);
       setTasksError(null);
       try {
         const params = new URLSearchParams();
-        if (selectedCategory !== null) params.set('category_id', String(selectedCategory));
-        if (selectedDifficulty !== null) params.set('difficulty', selectedDifficulty);
+        if (selectedCategory   !== null) params.set('category_id', String(selectedCategory));
+        if (selectedDifficulty !== null) params.set('difficulty',   selectedDifficulty);
         const query = params.toString();
-        const url = `${TASKS_BANK_BASE_URL}/api/v1/tasks${query ? `?${query}` : ''}`;
-        const res = await fetch(url);
+        const url   = `${TASKS_BANK_BASE_URL}/api/v1/tasks${query ? `?${query}` : ''}`;
+        const res   = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as TaskRead[];
         setTasks(data);
@@ -144,8 +146,12 @@ export default function NotesPanel({
       });
       if (res.ok) {
         const note = await res.json() as NoteResponse;
-        // Prepend — newest note appears at the top of the list
-        setNotes((prev) => [note, ...prev]);
+        setNotes((prev) => [...prev, note]);
+        // Scroll to bottom after React re-renders the new row
+        requestAnimationFrame(() => {
+          const list = notesListRef.current;
+          if (list) list.scrollTop = list.scrollHeight;
+        });
       }
       // Silently discard on non-ok — live interview, avoid UI distraction
     } catch {
@@ -184,26 +190,20 @@ export default function NotesPanel({
 
   // ── Render ─────────────────────────────────────────────────────────────
 
-  const canAdd = noteInput.trim().length > 0 && !isSubmittingNote;
-
   return (
     <div className={styles.notesPanel}>
 
-      {/* Header: label + timer */}
-      <div className={styles.notesPanelHeader}>
-        <span className={styles.notesLabel}>Заметки</span>
-        <InterviewTimer startTime={startTime} />
-      </div>
-
+      {/* ── 1. БАНК ЗАДАЧ (fixed height, no scroll) ─────────────────── */}
       <div className={styles.taskBank}>
-        <div className={styles.taskBankTitle}>Банк задач</div>
+        <div className={styles.sectionTitle}>Банк задач</div>
+
         <div className={styles.taskFilters}>
           <select
             className={styles.taskFilter}
             value={selectedCategory ?? ''}
             onChange={(e) => {
-              const value = e.target.value;
-              setSelectedCategory(value ? Number(value) : null);
+              const v = e.target.value;
+              setSelectedCategory(v ? Number(v) : null);
             }}
           >
             <option value="">Все категории</option>
@@ -211,75 +211,76 @@ export default function NotesPanel({
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
+
           <select
             className={styles.taskFilter}
             value={selectedDifficulty ?? ''}
             onChange={(e) => {
-              const value = e.target.value as DifficultyLevel | '';
-              setSelectedDifficulty(value || null);
+              const v = e.target.value as DifficultyLevel | '';
+              setSelectedDifficulty(v || null);
             }}
           >
             <option value="">Любая сложность</option>
-            <option value="easy">easy</option>
-            <option value="medium">medium</option>
-            <option value="hard">hard</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
           </select>
         </div>
-        <div className={styles.taskBankList}>
-          {tasksLoading && <div className={styles.taskState}>Загрузка задач...</div>}
-          {!tasksLoading && tasksError && <div className={styles.taskStateError}>{tasksError}</div>}
+
+        <div className={styles.taskList}>
+          {tasksLoading && (
+            <span className={styles.taskPlaceholder}>Загрузка...</span>
+          )}
+          {!tasksLoading && tasksError && (
+            <span className={styles.taskPlaceholder}>Задачи не загружены</span>
+          )}
           {!tasksLoading && !tasksError && tasks.length === 0 && (
-            <div className={styles.taskState}>Задачи не найдены</div>
+            <span className={styles.taskPlaceholder}>Задачи не загружены</span>
           )}
           {!tasksLoading && !tasksError && tasks.map((task) => (
-            <div key={task.id} className={styles.taskBankItem}>
+            <div key={task.id} className={styles.taskItem}>
               <div className={styles.taskTitleRow}>
                 <span className={styles.taskTitle}>{task.title}</span>
                 <span className={styles.taskBadge}>{task.difficulty}</span>
               </div>
-              <div className={styles.taskStatement}>{task.statement}</div>
+              {task.statement && (
+                <div className={styles.taskStatement}>{task.statement}</div>
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Notes list */}
-      <div className={styles.notesList}>
-        {notes.length === 0 ? (
-          <p className={styles.emptyNotes}>Нет заметок</p>
-        ) : (
-          notes.map((note) => (
-            <NoteRow
-              key={note.id}
-              note={note}
-              onDelete={handleDeleteNote}
-            />
-          ))
-        )}
+      {/* ── 2. ЗАМЕТКИ (takes remaining space, title + scrollable list) ── */}
+      <div className={styles.notesSection}>
+        <div className={styles.notesSectionTitle}>Заметки</div>
+
+        <div ref={notesListRef} className={styles.notesList}>
+          {notes.length === 0 ? (
+            <p className={styles.emptyNotes}>Нет заметок</p>
+          ) : (
+            notes.map((note) => (
+              <NoteRow
+                key={note.id}
+                note={note}
+                onDelete={handleDeleteNote}
+              />
+            ))
+          )}
+        </div>
       </div>
 
-      {/* Note input + finish button */}
+      {/* ── 3. Input + finish button (pinned at bottom) ─────────────── */}
       <div className={styles.noteInputArea}>
-        <div className={styles.inputRow}>
-          <input
-            ref={inputRef}
-            type="text"
-            className={styles.noteInput}
-            placeholder="Заметка… (Enter для сохранения)"
-            value={noteInput}
-            onChange={(e) => setNoteInput(e.target.value)}
-            onKeyDown={handleNoteKeyDown}
-          />
-          <button
-            type="button"
-            className={styles.addNoteBtn}
-            disabled={!canAdd}
-            aria-label="Добавить заметку"
-            onClick={() => { void handleAddNote(); }}
-          >
-            +
-          </button>
-        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          className={styles.noteInput}
+          placeholder="Заметка… (Enter для сохранения)"
+          value={noteInput}
+          onChange={(e) => setNoteInput(e.target.value)}
+          onKeyDown={handleNoteKeyDown}
+        />
 
         <button
           type="button"

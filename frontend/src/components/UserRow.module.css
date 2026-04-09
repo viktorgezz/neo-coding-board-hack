@@ -1,34 +1,24 @@
-/*
- * UserRow — admin users list row.
- *
- * Grid: Пользователь | Роль    | Добавлен | (delete)
- *       1fr          | 120px   | 140px    | 44px
- *
- * IMPORTANT: This grid-template-columns MUST match .tableHeader in
- * AdminUsersPage.module.css for column headers to align with row cells.
- */
-
 .userRow {
   display: grid;
   grid-template-columns: 1fr 120px 140px 88px;
   align-items: center;
   padding: 0 16px;
   height: 52px;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: transparent;
   position: relative;
 }
 
 .userRow:hover {
-  background: #141414;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .userRow:focus-visible {
-  outline: 1px solid #7c3aed;
+  outline: 1px solid #6060a0;
   outline-offset: -1px;
 }
 
-/* ── User identity: name + email stacked ── */
+/* ── User identity ── */
 .userIdentity {
   display: flex;
   flex-direction: column;
@@ -38,7 +28,7 @@
 
 .userName {
   font-size: 14px;
-  color: #e5e5e5;
+  color: var(--text-secondary);
   font-family: ui-sans-serif, system-ui, sans-serif;
   white-space: nowrap;
   overflow: hidden;
@@ -47,7 +37,7 @@
 
 .userEmail {
   font-size: 11px;
-  color: #555;
+  color: var(--text-muted);
   font-family: ui-sans-serif, system-ui, sans-serif;
   white-space: nowrap;
   overflow: hidden;
@@ -56,13 +46,13 @@
 
 /* ── Role cell ── */
 .roleCell {
-  /* RoleBadge is inline-block — no extra wrapper styling needed */
+  /* RoleBadge is inline-block */
 }
 
 /* ── Date cell ── */
 .dateCell {
   font-size: 12px;
-  color: #555;
+  color: var(--text-muted);
   font-family: 'Courier New', 'Courier', monospace;
   white-space: nowrap;
 }
@@ -84,7 +74,7 @@
   border-radius: 4px;
   border: none;
   background: transparent;
-  color: #6b7280;
+  color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
   padding: 0;
@@ -95,11 +85,10 @@
 }
 
 .editBtn:hover {
-  color: #60a5fa;
-  background: #0f1a2b;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-/* Delete button — invisible by default, revealed on row hover */
 .deleteBtn {
   display: flex;
   align-items: center;
@@ -109,18 +98,49 @@
   border-radius: 4px;
   border: none;
   background: transparent;
-  color: #555;
+  color: var(--text-muted);
   cursor: pointer;
   opacity: 0;
   padding: 0;
 }
 
-/* Reveal on parent row hover */
 .userRow:hover .deleteBtn {
   opacity: 1;
 }
 
 .deleteBtn:hover {
-  color: #f87171;
-  background: #1a0a0a;
+  color: var(--color-failed);
+  background: rgba(160, 80, 80, 0.1);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .userRow {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    height: auto;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .userIdentity {
+    flex: 1;
+    min-width: 0;
+  }
+  .roleCell {
+    flex-shrink: 0;
+  }
+  .dateCell {
+    display: none;
+  }
+  .actionsCell {
+    flex-shrink: 0;
+  }
+  /* Always show action buttons on mobile */
+  .editBtn,
+  .deleteBtn {
+    opacity: 1;
+  }
 }

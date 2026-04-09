@@ -1,0 +1,63 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  /* Prevent ALL document-level scroll — layouts manage their own scroll */
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow: hidden; /* AppLayout and standalone pages manage their own scroll */
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-page);
+  color: var(--text-secondary);
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Remove tap highlight on mobile */
+a, button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent image overflow */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+:root {
+  --bg-page: #0d0d14;
+  --bg-card: #13131f;
+  --bg-input: #1a1a2e;
+
+  --border-default: 1px solid rgba(255, 255, 255, 0.08);
+  --border-input: 1px solid #3a3a5c;
+  --border-input-focus: 1px solid #6060a0;
+  --border-accent: 1px solid #6060a0;
+
+  --text-primary: #e0e0ff;
+  --text-secondary: #c0c0e0;
+  --text-muted: #6060a0;
+
+  --radius-card: 8px;
+  --radius-input: 6px;
+
+  --color-easy: #1D9E75;
+  --color-medium: #A08030;
+  --color-hard: #A05050;
+  --color-passed: #1D9E75;
+  --color-failed: #A05050;
+  --color-active: #7B9EA6;
+}

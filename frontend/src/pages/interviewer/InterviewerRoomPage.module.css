@@ -1,27 +1,144 @@
-/*
- * InterviewerRoomPage — split layout shell.
- *
- * height: 100% fills the AppLayout mainContent area (flex: 1 inside 100vh).
- * overflow: hidden prevents either column from growing the page — Monaco
- * and the notes list both manage their own internal scroll independently.
- */
+/* ── Page shell — full viewport column ──────────────────────────────── */
 
 .roomRoot {
   display: flex;
-  height: 100%;
+  flex-direction: column;
+  height: 100vh;
   overflow: hidden;
+  background: #0d0d14;
 }
 
-/* 65% — Monaco code viewer */
+/* ── Unified header bar ──────────────────────────────────────────────── */
+
+.pageHeader {
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #0d0d14;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+}
+
+/* Status dot */
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dotOn  { background: #22c55e; }
+.dotOff { background: #6b7280; }
+.dotErr { background: #f87171; }
+
+/* Status label */
+.statusLabel {
+  font-size: 13px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.labelOn  { color: #22c55e; }
+.labelOff { color: #6b7280; }
+.labelErr { color: #f87171; }
+
+/* Cursor-visibility toggle button */
+.cursorToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.cursorToggleBtn:hover {
+  color: #9ca3af;
+  border-color: #3a3a5c;
+}
+
+.cursorToggleBtn[aria-pressed="true"] {
+  color: #6b7280;
+  opacity: 0.5;
+}
+
+/* ── Main content — horizontal split ────────────────────────────────── */
+
+.mainContent {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 48px);
+}
+
+/* Left — Monaco code viewer, fills remaining width */
 .codeColumn {
-  flex: 0 0 65%;
+  flex: 1;
+  min-width: 0;
   height: 100%;
   overflow: hidden;
 }
 
-/* 35% — notes panel */
+/* Right — notes panel, fixed width */
 .notesColumn {
-  flex: 0 0 35%;
+  width: 340px;
+  flex-shrink: 0;
   height: 100%;
   overflow: hidden;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+/* Tablet: shrink notes panel */
+@media (max-width: 1024px) {
+  .notesColumn {
+    width: 280px;
+  }
+}
+
+/* Narrow tablet: stack vertically — code on top, notes below */
+@media (max-width: 768px) {
+  .mainContent {
+    flex-direction: column;
+    height: auto;
+    overflow-y: auto;
+  }
+  .codeColumn {
+    height: 55vh;
+    flex: none;
+  }
+  .notesColumn {
+    width: 100%;
+    height: 45vh;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Mobile: compact header */
+@media (max-width: 480px) {
+  .pageHeader {
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .headerLeft {
+    gap: 8px;
+  }
 }

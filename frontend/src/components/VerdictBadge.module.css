@@ -1,4 +1,3 @@
-/* Base badge — shared by all four variants */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -9,33 +8,33 @@
   font-weight: 600;
   font-family: ui-sans-serif, system-ui, sans-serif;
   white-space: nowrap;
+  background: transparent;
 }
 
 /* codeResolution: PASSED */
 .badgePassed {
-  background: #166534;
-  color: #22c55e;
+  border: 1px solid var(--color-passed);
+  color: var(--color-passed);
 }
 
 /* codeResolution: REJECTED */
 .badgeRejected {
-  background: #7f1d1d;
-  color: #f87171;
+  border: 1px solid var(--color-failed);
+  color: var(--color-failed);
 }
 
-/* status: ACTIVE (no codeResolution yet) */
+/* status: ACTIVE */
 .badgeActive {
-  background: #1a1a1a;
+  border: 1px solid #22c55e;
   color: #22c55e;
 }
 
-/* status: FINISHED (no codeResolution — verdict not available in list response) */
+/* status: FINISHED, no verdict */
 .badgeFinished {
-  background: #1a1a1a;
-  color: #555;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
 }
 
-/* Dot indicator — ACTIVE badge only */
 .activeDot {
   width: 5px;
   height: 5px;

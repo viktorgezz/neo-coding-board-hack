@@ -6,7 +6,7 @@
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
-/* ── Page header: title+subtitle (left) + create button (right) ──────────── */
+/* ── Page header ─────────────────────────────────────────────────────────── */
 .pageHeader {
   display: flex;
   align-items: center;
@@ -17,24 +17,29 @@
 .pageTitle {
   font-size: 20px;
   font-weight: 600;
-  color: #e5e5e5;
+  color: var(--text-primary);
   margin: 0;
 }
 
-/* Amber subtitle — visible reminder that the API is provisional */
 .pageSubtitle {
   font-size: 11px;
-  color: #f59e0b;
+  color: var(--color-medium);
   margin: 2px 0 0;
+}
+
+.headerBtns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .createBtn {
   height: 34px;
   padding: 0 14px;
-  background: #7c3aed;
-  border: none;
-  border-radius: 6px;
-  color: #fff;
+  background: transparent;
+  border: var(--border-accent);
+  border-radius: var(--radius-input);
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   font-family: ui-sans-serif, system-ui, sans-serif;
@@ -44,48 +49,45 @@
 }
 
 .createBtn:hover {
-  background: #6d28d9;
+  border-color: var(--text-primary);
+  color: var(--text-primary);
 }
 
 .manageTaskBankBtn {
   height: 34px;
   padding: 0 14px;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 6px;
-  color: #e2e8f0;
+  background: transparent;
+  border: var(--border-default);
+  border-radius: var(--radius-input);
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   font-family: ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  margin-left: 8px;
 }
 
 .manageTaskBankBtn:hover {
-  background: #111b2f;
+  border-color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* ── Table header ────────────────────────────────────────────────────────── */
-/*
- * grid-template-columns MUST match .userRow in UserRow.module.css
- * and .skeletonRow below for column alignment.
- */
 .tableHeader {
   display: grid;
   grid-template-columns: 1fr 120px 140px 88px;
   align-items: center;
   padding: 0 16px;
   height: 36px;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .colHeader {
   font-size: 11px;
-  font-weight: 500;
-  color: #555;
-  letter-spacing: 0.06em;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -95,14 +97,13 @@
 }
 
 /* ── Skeleton rows ───────────────────────────────────────────────────────── */
-/* Same grid as .tableHeader and UserRow — columns must stay in sync */
 .skeletonRow {
   display: grid;
   grid-template-columns: 1fr 120px 140px 88px;
   align-items: center;
   padding: 0 16px;
   height: 52px;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .skeletonCell {
@@ -110,9 +111,9 @@
   border-radius: 3px;
   background: linear-gradient(
     90deg,
-    #1a1a1a 25%,
-    #242424 50%,
-    #1a1a1a 75%
+    var(--bg-card) 25%,
+    rgba(255,255,255,0.03) 50%,
+    var(--bg-card) 75%
   );
   background-size: 400px 100%;
   animation: shimmer 1.4s infinite linear;
@@ -133,7 +134,7 @@
 
 .emptyState p {
   font-size: 14px;
-  color: #555;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -150,15 +151,15 @@
 
 .errorState p {
   font-size: 14px;
-  color: #f87171;
+  color: var(--color-failed);
   margin: 0;
 }
 
 .retryBtn {
   background: none;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  color: #e5e5e5;
+  border: var(--border-default);
+  border-radius: var(--radius-input);
+  color: var(--text-secondary);
   font-size: 13px;
   font-family: ui-sans-serif, system-ui, sans-serif;
   padding: 6px 14px;
@@ -166,21 +167,22 @@
 }
 
 .retryBtn:hover {
-  background: #141414;
+  border-color: var(--text-muted);
 }
 
+/* ── Candidate section (unused in current impl, kept for compatibility) ── */
 .candidateSection {
   margin-top: 24px;
-  border: 1px solid #1f2937;
-  border-radius: 10px;
+  border: var(--border-default);
+  border-radius: var(--radius-card);
   padding: 14px;
-  background: #0f172a;
+  background: var(--bg-card);
 }
 
 .candidateTitle {
   margin: 0 0 10px;
   font-size: 16px;
-  color: #e5e7eb;
+  color: var(--text-primary);
 }
 
 .candidateList {
@@ -195,26 +197,57 @@
   gap: 10px;
   align-items: center;
   padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #223047;
-  background: #111827;
+  border-radius: var(--radius-input);
+  border: var(--border-default);
+  background: var(--bg-input);
 }
 
 .candidateMeta {
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .openReportBtn {
-  border: 1px solid #7c3aed;
-  background: #4c1d95;
-  color: #f3e8ff;
-  border-radius: 6px;
+  border: var(--border-accent);
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-input);
   padding: 6px 10px;
   font-size: 12px;
   cursor: pointer;
 }
 
 .openReportBtn:hover {
-  background: #5b21b6;
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .adminPage {
+    padding: 20px;
+  }
+  .pageHeader {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .adminPage {
+    padding: 14px 12px;
+  }
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .headerBtns {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  /* Hide table header — rows become cards */
+  .tableHeader {
+    display: none;
+  }
 }

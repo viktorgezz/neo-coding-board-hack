@@ -9,9 +9,9 @@
  * Zero useEffect — all derived data comes from hooks, no subscriptions.
  */
 
-import { memo, useMemo, useState, type ReactNode } from 'react';
+import { memo, useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { List, Plus, Users, Shield } from 'lucide-react';
+import { List, Plus, Users, Shield, BookOpen } from 'lucide-react';
 
 import { useAuth } from '@/auth/useAuth';
 import type { AuthRole } from '@/constants/roles';
@@ -43,11 +43,13 @@ const NAV_ITEMS: Record<AuthRole, NavItem[]> = {
     { label: 'Create Interview', path: '/interviewer/sessions/new', icon: <Plus size={16} />, exact: true },
   ],
   hr: [
-    { label: 'All Candidates',   path: '/hr/candidates',            icon: <Users size={16} /> },
+    { label: 'Кандидаты',    path: '/hr/candidates',    icon: <Users    size={16} /> },
+    { label: 'Банк задач',   path: '/task-bank/manage', icon: <BookOpen size={16} /> },
   ],
   admin: [
-    { label: 'All Candidates',   path: '/hr/candidates',            icon: <Users size={16} /> },
-    { label: 'Users',            path: '/admin/users',              icon: <Shield size={16} /> },
+    { label: 'Кандидаты',    path: '/hr/candidates',    icon: <Users    size={16} /> },
+    { label: 'Банк задач',   path: '/task-bank/manage', icon: <BookOpen size={16} /> },
+    { label: 'Пользователи', path: '/admin/users',      icon: <Shield   size={16} /> },
   ],
 };
 
@@ -219,6 +221,34 @@ export default function AppLayout() {
     onLogout: handleLogout,
   };
 
+  // #region agent log
+  useEffect(() => {
+    const els = [
+      { name: 'html',         el: document.documentElement },
+      { name: 'body',         el: document.body },
+      { name: '#root',        el: document.getElementById('root') },
+      { name: '.appShell',    el: document.querySelector('[class*="appShell"]') as HTMLElement | null },
+      { name: '.mainContent', el: document.querySelector('[class*="mainContent"]') as HTMLElement | null },
+    ];
+    const data: Record<string, unknown> = {};
+    for (const { name, el } of els) {
+      if (!el) { data[name] = 'NOT FOUND'; continue; }
+      const cs = getComputedStyle(el);
+      data[name] = {
+        overflow:     cs.overflow,
+        overflowX:    cs.overflowX,
+        overflowY:    cs.overflowY,
+        height:       cs.height,
+        scrollHeight: el.scrollHeight,
+        clientHeight: el.clientHeight,
+      };
+    }
+    // Fallback: always log to console so DevTools shows it even if fetch fails
+    console.error('[DEBUG 53e720][post-fix] html.overflowY should be "hidden", was "auto" before fix. Now:', data);
+    fetch('http://127.0.0.1:7245/ingest/d4c59247-8f5c-4330-ad2e-6797ad994d81',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'53e720'},body:JSON.stringify({sessionId:'53e720',runId:'post-fix',location:'AppLayout.tsx:mount',message:'post-fix verification',data,timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+  }, []);
+  // #endregion
+
   return (
     <div className={styles.appShell}>
       {/* ── Desktop sidebar (sticky, always in DOM, hidden on mobile via CSS) */}
@@ -228,22 +258,37 @@ export default function AppLayout() {
 
       {/* ── Mobile top bar (hidden on desktop via CSS) */}
       <div className={styles.mobileTopBar}>
-        <span className={styles.mobileTopBarWordmark}>NEO CODING BOARD</span>
         <button
           type="button"
           className={styles.mobileMenuBtn}
-          onClick={() => setIsMobileOpen(true)}
+          onClick={() => { console.error('[DEBUG 53e720][mobile-menu] hamburger clicked, setting isMobileOpen=true'); setIsMobileOpen(true); }}
           aria-label="Open navigation"
           aria-expanded={isMobileOpen}
         >
-          {/* Unicode hamburger — avoids an extra lucide-react import */}
           ☰
         </button>
+        <span className={styles.mobileTopBarWordmark}>NEO CODING BOARD</span>
       </div>
 
       {/* ── Mobile overlay sidebar (JS-toggled; position:fixed, z-index:50) */}
       {isMobileOpen && (
         <>
+          {/* #region agent log */}
+          {(() => {
+            setTimeout(() => {
+              const overlay = document.querySelector('[class*="sidebarOverlay"]') as HTMLElement | null;
+              const backdrop = document.querySelector('[class*="mobileBackdrop"]') as HTMLElement | null;
+              const data = {
+                overlay: overlay ? { display: getComputedStyle(overlay).display, zIndex: getComputedStyle(overlay).zIndex, width: getComputedStyle(overlay).width, visibility: getComputedStyle(overlay).visibility } : 'NOT FOUND',
+                backdrop: backdrop ? { display: getComputedStyle(backdrop).display, zIndex: getComputedStyle(backdrop).zIndex } : 'NOT FOUND',
+                isMobileOpen: true,
+              };
+              console.error('[DEBUG 53e720][mobile-menu][post-fix] overlay.display should be "flex" now:', JSON.stringify(data, null, 2));
+              fetch('http://127.0.0.1:7245/ingest/d4c59247-8f5c-4330-ad2e-6797ad994d81',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'53e720'},body:JSON.stringify({sessionId:'53e720',runId:'mobile-menu',location:'AppLayout.tsx:isMobileOpen',message:'overlay rendered',data,timestamp:Date.now(),hypothesisId:'F-G-H'})}).catch(()=>{});
+            }, 50);
+            return null;
+          })()}
+          {/* #endregion */}
           <div
             className={styles.mobileBackdrop}
             onClick={() => setIsMobileOpen(false)}

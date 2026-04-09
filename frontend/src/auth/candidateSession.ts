@@ -15,16 +15,23 @@
  *   - Candidate pages → src/auth/candidateSession.ts  ← this file
  */
 
-let _candidateToken: string | null = null;
-let _candidateRoomId: string | null = null;
+let _candidateToken:   string | null = null;
+let _candidateRoomId:  string | null = null;
+let _candidateVacancy: string | null = null;
 
 /**
- * Store the token and room ID after successful POST /rooms/register/:id.
- * Called by CandidateJoinPage immediately before navigating to the editor.
+ * Store the token, room ID, and vacancy name after successful
+ * POST /rooms/register/:id. Called by CandidateJoinPage immediately
+ * before navigating to the editor.
  */
-export function setCandidateSession(token: string, roomId: string): void {
-  _candidateToken = token;
-  _candidateRoomId = roomId;
+export function setCandidateSession(
+  token:    string,
+  roomId:   string,
+  vacancy?: string,
+): void {
+  _candidateToken   = token;
+  _candidateRoomId  = roomId;
+  _candidateVacancy = vacancy ?? null;
 }
 
 /** Used by CandidateEditorPage to attach the token to the WebSocket connection. */
@@ -37,8 +44,17 @@ export function getCandidateRoomId(): string | null {
   return _candidateRoomId;
 }
 
+/**
+ * Vacancy name captured during the join step — guarantees the editor shows
+ * the same vacancy the join page displayed, with no extra round-trip.
+ */
+export function getCandidateVacancy(): string | null {
+  return _candidateVacancy;
+}
+
 /** Called when the candidate navigates away or the session ends. */
 export function clearCandidateSession(): void {
-  _candidateToken = null;
-  _candidateRoomId = null;
+  _candidateToken   = null;
+  _candidateRoomId  = null;
+  _candidateVacancy = null;
 }

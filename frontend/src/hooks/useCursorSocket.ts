@@ -3,28 +3,46 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export type CursorSocketRole = 'candidate' | 'interviewer';
 
 interface CursorInMessage {
-  line: number;
-  column: number;
+  line:          number;
+  column:        number;
+  selStartLine?: number;
+  selStartCol?:  number;
+  selEndLine?:   number;
+  selEndCol?:    number;
 }
 
-interface CursorOutMessage {
-  line: number;
-  column: number;
-  timestamp: number;
-  from_role: CursorSocketRole;
+export interface CursorOutMessage {
+  line:          number;
+  column:        number;
+  timestamp:     number;
+  from_role:     CursorSocketRole;
+  selStartLine?: number;
+  selStartCol?:  number;
+  selEndLine?:   number;
+  selEndCol?:    number;
 }
 
 interface UseCursorSocketParams {
   interviewId: string;
-  role: CursorSocketRole;
+  role:        CursorSocketRole;
+}
+
+export interface CursorSelectionData {
+  selStartLine: number;
+  selStartCol:  number;
+  selEndLine:   number;
+  selEndCol:    number;
 }
 
 interface UseCursorSocketResult {
-  isConnected: boolean;
-  error: string | null;
-  cursorFromCandidate: CursorOutMessage | null;
+  isConnected:          boolean;
+  error:                string | null;
+  cursorFromCandidate:  CursorOutMessage | null;
   cursorFromInterviewer: CursorOutMessage | null;
-  sendCursorPosition: (line: number, column: number) => void;
+  /** Send cursor position, optionally with a selection range. */
+  sendCursorPosition:   (line: number, column: number, sel?: CursorSelectionData) => void;
+  /** Send an explicit "cursor hidden" signal to clear the remote decoration. */
+  sendCursorHide:       () => void;
 }
 
 const BACKOFF_MS: [number, number, number] = [1000, 2000, 4000];
@@ -41,14 +59,14 @@ export function useCursorSocket({
   interviewId,
   role,
 }: UseCursorSocketParams): UseCursorSocketResult {
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsRef               = useRef<WebSocket | null>(null);
+  const reconnectTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
-  const isUnmountingRef = useRef(false);
+  const isUnmountingRef     = useRef(false);
 
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cursorFromCandidate, setCursorFromCandidate] = useState<CursorOutMessage | null>(null);
+  const [isConnected,           setIsConnected]           = useState(false);
+  const [error,                 setError]                 = useState<string | null>(null);
+  const [cursorFromCandidate,   setCursorFromCandidate]   = useState<CursorOutMessage | null>(null);
   const [cursorFromInterviewer, setCursorFromInterviewer] = useState<CursorOutMessage | null>(null);
 
   const connect = useCallback(() => {
@@ -68,7 +86,14 @@ export function useCursorSocket({
         if (payload.from_role === 'candidate') {
           setCursorFromCandidate(payload);
         } else if (payload.from_role === 'interviewer') {
-          setCursorFromInterviewer(payload);
+          // line < 0 is the sentinel for "cursor hidden".
+          // The relay server forwards line/column as-is, so negative values
+          // arrive intact even if the server doesn't know about `hidden`.
+          if (payload.line < 0) {
+            setCursorFromInterviewer(null);
+          } else {
+            setCursorFromInterviewer(payload);
+          }
         }
       } catch {
         // non-fatal parse error
@@ -106,11 +131,23 @@ export function useCursorSocket({
     };
   }, [connect]);
 
-  const sendCursorPosition = useCallback((line: number, column: number) => {
+  const sendCursorPosition = useCallback((
+    line:   number,
+    column: number,
+    sel?:   CursorSelectionData,
+  ) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    const payload: CursorInMessage = { line, column };
+    const payload: CursorInMessage = { line, column, ...sel };
     ws.send(JSON.stringify(payload));
+  }, []);
+
+  const sendCursorHide = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    // line: -1 is the sentinel — backend relay forwards it as-is.
+    // Candidate's onmessage checks line < 0 and clears the decoration.
+    ws.send(JSON.stringify({ line: -1, column: -1 } satisfies CursorInMessage));
   }, []);
 
   return {
@@ -119,5 +156,6 @@ export function useCursorSocket({
     cursorFromCandidate,
     cursorFromInterviewer,
     sendCursorPosition,
+    sendCursorHide,
   };
 }

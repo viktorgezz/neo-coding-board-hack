@@ -126,8 +126,7 @@ const MOCK_REPORT: CandidateReportPayload = {
   },
 };
 
-const EVENT_COLOR: Record<EventType, string> = { NOTE: '#38bdf8', PASTE: '#ef4444', TAB_SWITCH: '#facc15' };
-const EVENT_EMOJI: Record<EventType, string> = { NOTE: '📝', PASTE: '📋', TAB_SWITCH: '🟨' };
+const EVENT_COLOR: Record<EventType, string> = { NOTE: '#7B9EA6', PASTE: '#A05050', TAB_SWITCH: '#A08030' };
 const EVENT_LABEL: Record<EventType, string> = {
   NOTE: 'Заметка',
   PASTE: 'Вставка',
@@ -190,12 +189,6 @@ function interpolateDistributionY(curve: DistributionPoint[], x: number): number
   return 0;
 }
 
-function getScoreColor(value: number): string {
-  if (value >= 5) return '#22c55e';
-  if (value >= 4) return '#84cc16';
-  if (value >= 3) return '#f59e0b';
-  return '#ef4444';
-}
 
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>();
@@ -234,10 +227,6 @@ export default function ReportPage() {
       { metric: 'Целостность', value: report.radarMetrics.integrity },
     ],
     [report.radarMetrics],
-  );
-  const radarScoreByMetric = useMemo(
-    () => Object.fromEntries(radarData.map((item) => [item.metric, item.value])) as Record<string, number>,
-    [radarData],
   );
 
   const noteEvents = useMemo(
@@ -280,11 +269,7 @@ export default function ReportPage() {
     const cx = props.cx ?? 0;
     const cy = props.cy ?? 0;
     const type = props.payload?.type ?? 'NOTE';
-    return (
-      <text x={cx} y={cy + 5} textAnchor="middle" fontSize={16}>
-        {EVENT_EMOJI[type]}
-      </text>
-    );
+    return <circle cx={cx} cy={cy} r={5} fill={EVENT_COLOR[type]} />;
   };
 
   return (
@@ -350,14 +335,15 @@ export default function ReportPage() {
 
       <div className={styles.chartGrid}>
         <div className={styles.chartCard}>
-          <h2 className={styles.chartTitle}>1) Интерактивный таймлайн событий</h2>
+          <h2 className={styles.chartTitle}>Интерактивный таймлайн событий</h2>
           <ResponsiveContainer width="100%" height={280}>
             <ScatterChart margin={{ top: 10, right: 15, left: 5, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis
                 type="number"
                 dataKey="xMin"
-                stroke="#9ca3af"
+                stroke="#6060a0"
+                tick={{ fill: '#6060a0', fontSize: 11 }}
                 tickFormatter={formatMin}
                 name="Время"
               />
@@ -367,13 +353,15 @@ export default function ReportPage() {
                 domain={[0.5, 1.5]}
                 hide
               />
-              <ReferenceLine y={1} stroke="#334155" strokeDasharray="4 4" />
+              <ReferenceLine y={1} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
               <Tooltip
                 cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
+                labelStyle={{ color: '#6060a0', fontSize: 11 }}
+                itemStyle={{ color: '#c0c0e0', fontSize: 12 }}
                 formatter={(_, __, payload) => {
-                  const type = payload?.payload?.type as EventType | undefined;
                   const label = payload?.payload?.label ?? '';
-                  return `${type ? EVENT_EMOJI[type] : ''} ${label}`.trim();
+                  return label;
                 }}
                 labelFormatter={(value) => `t=${formatMin(Number(value))}`}
               />
@@ -392,73 +380,84 @@ export default function ReportPage() {
         </div>
 
         <div className={styles.chartCard}>
-          <h2 className={styles.chartTitle}>2) Динамика сложности кода</h2>
+          <h2 className={styles.chartTitle}>Динамика сложности кода</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={complexityData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="xMin" stroke="#9ca3af" tickFormatter={formatMin} />
-              <YAxis stroke="#9ca3af" domain={[0, 100]} />
-              <Tooltip formatter={(v) => [`${v}`, 'Цикломатическая сложность']} labelFormatter={(v) => `t=${formatMin(Number(v))}`} />
-              <Legend />
-              <Line type="monotone" dataKey="complexity" stroke="#22d3ee" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="xMin" stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} tickFormatter={formatMin} />
+              <YAxis stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} domain={[0, 100]} />
+              <Tooltip
+                contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
+                labelStyle={{ color: '#6060a0', fontSize: 11 }}
+                itemStyle={{ color: '#c0c0e0', fontSize: 12 }}
+                formatter={(v) => [`${v}`, 'Цикломатическая сложность']}
+                labelFormatter={(v) => `t=${formatMin(Number(v))}`}
+              />
+              <Legend wrapperStyle={{ color: '#6060a0', fontSize: 12 }} />
+              <Line type="monotone" dataKey="complexity" stroke="#7B9EA6" strokeWidth={2} dot={{ r: 3, fill: '#7B9EA6' }} activeDot={{ r: 5, fill: '#7B9EA6' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className={styles.chartCard}>
-          <h2 className={styles.chartTitle}>3) Радар компетенций</h2>
+          <h2 className={styles.chartTitle}>Радар компетенций</h2>
           <ResponsiveContainer width="100%" height={280}>
             <RadarChart data={radarData}>
-              <PolarGrid stroke="#334155" />
+              <PolarGrid stroke="rgba(255,255,255,0.08)" />
               <PolarAngleAxis
                 dataKey="metric"
-                tick={({ x, y, payload, textAnchor }) => {
-                  const metric = String(payload?.value ?? '');
-                  const score = radarScoreByMetric[metric] ?? 0;
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      textAnchor={textAnchor}
-                      fill={getScoreColor(score)}
-                      fontSize={12}
-                      fontWeight={700}
-                    >
-                      {metric}
-                    </text>
-                  );
-                }}
+                tick={({ x, y, payload, textAnchor }) => (
+                  <text
+                    x={x}
+                    y={y}
+                    textAnchor={textAnchor}
+                    fill="#6060a0"
+                    fontSize={11}
+                    fontWeight={400}
+                  >
+                    {String(payload?.value ?? '')}
+                  </text>
+                )}
               />
-              <PolarRadiusAxis angle={30} domain={[0, 5]} stroke="#64748b" />
+              <PolarRadiusAxis angle={30} domain={[0, 5]} stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 10 }} />
               <Radar
                 name="Профиль кандидата"
                 dataKey="value"
-                stroke="#a78bfa"
-                fill="#8b5cf6"
-                fillOpacity={0.4}
+                stroke="#7B9EA6"
+                fill="#7B9EA6"
+                fillOpacity={0.15}
               />
-              <Tooltip />
+              <Tooltip
+                contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
+                labelStyle={{ color: '#6060a0', fontSize: 11 }}
+                itemStyle={{ color: '#c0c0e0', fontSize: 12 }}
+              />
             </RadarChart>
           </ResponsiveContainer>
         </div>
 
         <div className={styles.chartCard}>
-          <h2 className={styles.chartTitle}>4) Сравнительная гистограмма (Benchmark)</h2>
+          <h2 className={styles.chartTitle}>Сравнительная гистограмма (Benchmark)</h2>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={report.comparative.distributionCurve}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-              <XAxis dataKey="x" stroke="#9ca3af" />
-              <YAxis stroke="#9ca3af" />
-              <Tooltip formatter={(v) => Number(v).toFixed(4)} />
-              <Legend />
-              <Line type="monotone" dataKey="y" stroke="#f59e0b" dot={false} strokeWidth={2} name="Распределение" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="x" stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} />
+              <YAxis stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
+                labelStyle={{ color: '#6060a0', fontSize: 11 }}
+                itemStyle={{ color: '#c0c0e0', fontSize: 12 }}
+                formatter={(v) => Number(v).toFixed(4)}
+              />
+              <Legend wrapperStyle={{ color: '#6060a0', fontSize: 12 }} />
+              <Line type="monotone" dataKey="y" stroke="#7B9EA6" dot={false} strokeWidth={2} name="Распределение" />
               <ReferenceLine
                 x={report.comparative.candidateZScore}
-                stroke="#ef4444"
-                strokeWidth={2}
-                label={`${report.summary.candidateName} z=${report.comparative.candidateZScore.toFixed(2)}`}
+                stroke="#A05050"
+                strokeWidth={1}
+                label={{ value: `${report.summary.candidateName} z=${report.comparative.candidateZScore.toFixed(2)}`, fill: '#A05050', fontSize: 11 }}
               />
-              <Scatter name="Кандидат" data={[candidateDistributionPoint]} fill="#ef4444" />
+              <Scatter name="Кандидат" data={[candidateDistributionPoint]} fill="#A05050" />
             </LineChart>
           </ResponsiveContainer>
         </div>

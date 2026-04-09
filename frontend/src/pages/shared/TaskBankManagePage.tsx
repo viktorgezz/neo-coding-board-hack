@@ -1,279 +1,479 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import styles from './TaskBankManagePage.module.css';
 
-type DifficultyLevel = 'easy' | 'medium' | 'hard';
+// ── Types ──────────────────────────────────────────────────────────────────────
 
-interface CategoryRead {
+interface Category {
   id: number;
   name: string;
-  description?: string | null;
+  description: string;
 }
 
-interface TaskRead {
+interface Task {
   id: number;
   title: string;
   statement: string;
-  difficulty: DifficultyLevel;
+  difficulty: 'easy' | 'medium' | 'hard';
   category_id: number;
 }
 
-const TASKS_BANK_BASE_URL = (
-  import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
-  ?? 'http://72.56.248.147:8001'
-).replace(/\/$/, '');
+type Difficulty = 'easy' | 'medium' | 'hard';
 
-const EMPTY_CATEGORY_FORM = { name: '', description: '' };
-const EMPTY_TASK_FORM = { title: '', statement: '', difficulty: 'medium' as DifficultyLevel, category_id: '' };
+// ── Axios instance ─────────────────────────────────────────────────────────────
 
-export default function TaskBankManagePage() {
-  const [categories, setCategories] = useState<CategoryRead[]>([]);
-  const [tasks, setTasks] = useState<TaskRead[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const api = axios.create({ baseURL: 'http://72.56.248.147:8001' });
 
-  const [categoryForm, setCategoryForm] = useState(EMPTY_CATEGORY_FORM);
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
-  const [taskForm, setTaskForm] = useState(EMPTY_TASK_FORM);
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+// ── API hooks ──────────────────────────────────────────────────────────────────
 
-  const fetchCategories = useCallback(async () => {
-    const res = await fetch(`${TASKS_BANK_BASE_URL}/api/v1/categories`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json() as CategoryRead[];
-    setCategories(data);
-  }, []);
+function useCategories() {
+  return useQuery<Category[]>({
+    queryKey: ['categories'],
+    queryFn: () => api.get<Category[]>('/api/v1/categories').then((r) => r.data),
+  });
+}
 
-  const fetchTasks = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (selectedCategory !== null) params.set('category_id', String(selectedCategory));
-    if (selectedDifficulty !== null) params.set('difficulty', selectedDifficulty);
-    const query = params.toString();
-    const url = `${TASKS_BANK_BASE_URL}/api/v1/tasks${query ? `?${query}` : ''}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json() as TaskRead[];
-    setTasks(data);
-  }, [selectedCategory, selectedDifficulty]);
+function useCreateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name: string; description: string }) =>
+      api.post('/api/v1/categories', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([fetchCategories(), fetchTasks()]);
-    } catch {
-      setError('Не удалось загрузить Task Bank');
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchCategories, fetchTasks]);
+function useUpdateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; name: string; description: string }) =>
+      api.patch(`/api/v1/categories/${id}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/api/v1/categories/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  });
+}
 
-  const categoryNameById = useMemo(() => {
-    const map = new Map<number, string>();
-    categories.forEach((c) => map.set(c.id, c.name));
-    return map;
-  }, [categories]);
+function useTasks(filters: { difficulty: string; category_id: string }) {
+  return useQuery<Task[]>({
+    queryKey: ['tasks', filters],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (filters.difficulty) params.set('difficulty', filters.difficulty);
+      if (filters.category_id) params.set('category_id', filters.category_id);
+      const qs = params.toString();
+      return api.get<Task[]>(`/api/v1/tasks${qs ? `?${qs}` : ''}`).then((r) => r.data);
+    },
+  });
+}
 
-  async function saveCategory() {
-    if (!categoryForm.name.trim()) return;
-    const isEdit = editingCategoryId !== null;
-    const url = isEdit
-      ? `${TASKS_BANK_BASE_URL}/api/v1/categories/${editingCategoryId}`
-      : `${TASKS_BANK_BASE_URL}/api/v1/categories`;
-    const method = isEdit ? 'PATCH' : 'POST';
-    const body = {
-      name: categoryForm.name.trim(),
-      description: categoryForm.description.trim() || null,
-    };
+function useCreateTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { title: string; statement: string; difficulty: Difficulty; category_id: number }) =>
+      api.post('/api/v1/tasks', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+}
 
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+function useUpdateTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: number; title: string; statement: string; difficulty: Difficulty; category_id: number }) =>
+      api.patch(`/api/v1/tasks/${id}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+}
+
+function useDeleteTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/api/v1/tasks/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+  });
+}
+
+// ── Difficulty badge ───────────────────────────────────────────────────────────
+
+const DIFFICULTY_LABEL: Record<Difficulty, string> = {
+  easy: 'Лёгкая',
+  medium: 'Средняя',
+  hard: 'Сложная',
+};
+
+function DifficultyBadge({ value }: { value: Difficulty }) {
+  return <span className={`${styles.badge} ${styles[`badge_${value}`]}`}>{DIFFICULTY_LABEL[value]}</span>;
+}
+
+// ── Category row ───────────────────────────────────────────────────────────────
+
+function CategoryRow({ cat, categories }: { cat: Category; categories: Category[] }) {
+  const update = useUpdateCategory();
+  const remove = useDeleteCategory();
+
+  const [editing, setEditing]     = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [name, setName]           = useState(cat.name);
+  const [desc, setDesc]           = useState(cat.description);
+
+  function handleSave() {
+    if (!name.trim()) return;
+    update.mutate({ id: cat.id, name: name.trim(), description: desc.trim() }, {
+      onSuccess: () => setEditing(false),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    setCategoryForm(EMPTY_CATEGORY_FORM);
-    setEditingCategoryId(null);
-    await reload();
   }
 
-  async function saveTask() {
-    if (!taskForm.title.trim() || !taskForm.statement.trim() || !taskForm.category_id) return;
-    const isEdit = editingTaskId !== null;
-    const url = isEdit
-      ? `${TASKS_BANK_BASE_URL}/api/v1/tasks/${editingTaskId}`
-      : `${TASKS_BANK_BASE_URL}/api/v1/tasks`;
-    const method = isEdit ? 'PATCH' : 'POST';
-    const body = {
-      title: taskForm.title.trim(),
-      statement: taskForm.statement.trim(),
-      difficulty: taskForm.difficulty,
-      category_id: Number(taskForm.category_id),
-    };
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    setTaskForm(EMPTY_TASK_FORM);
-    setEditingTaskId(null);
-    await reload();
+  function handleDelete() {
+    remove.mutate(cat.id, { onSuccess: () => setConfirming(false) });
+  }
+
+  if (editing) {
+    return (
+      <div className={styles.listItem}>
+        <div className={styles.listItemBody}>
+          <input
+            className={styles.input}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Название"
+          />
+          <input
+            className={`${styles.input} ${styles.inputSm}`}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            placeholder="Описание"
+            style={{ marginTop: 6 }}
+          />
+          <div className={styles.inlineActions}>
+            <button className={styles.btnSave} onClick={handleSave} disabled={update.isPending}>
+              {update.isPending ? '...' : 'Сохранить'}
+            </button>
+            <button className={styles.btnCancel} onClick={() => { setEditing(false); setName(cat.name); setDesc(cat.description); }}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (confirming) {
+    return (
+      <div className={styles.listItem}>
+        <div className={styles.listItemBody}>
+          <span className={styles.itemName}>{cat.name}</span>
+          <div className={styles.inlineActions}>
+            <span className={styles.confirmText}>Удалить?</span>
+            <button className={styles.btnDanger} onClick={handleDelete} disabled={remove.isPending}>
+              {remove.isPending ? '...' : 'Да'}
+            </button>
+            <button className={styles.btnCancel} onClick={() => setConfirming(false)}>Нет</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // prevent unused variable warning
+  void categories;
+
+  return (
+    <div className={styles.listItem}>
+      <div className={styles.listItemBody}>
+        <span className={styles.itemName}>{cat.name}</span>
+        {cat.description && <span className={styles.itemDesc}>{cat.description}</span>}
+      </div>
+      <div className={styles.listItemActions}>
+        <button className={styles.iconBtn} onClick={() => setEditing(true)} title="Редактировать">✎</button>
+        <button className={styles.iconBtn} onClick={() => setConfirming(true)} title="Удалить">✕</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Task row ───────────────────────────────────────────────────────────────────
+
+function TaskRow({ task, categories }: { task: Task; categories: Category[] }) {
+  const update = useUpdateTask();
+  const remove = useDeleteTask();
+
+  const [editing, setEditing]     = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [title, setTitle]         = useState(task.title);
+  const [statement, setStatement] = useState(task.statement);
+  const [difficulty, setDifficulty] = useState<Difficulty>(task.difficulty);
+  const [categoryId, setCategoryId] = useState(String(task.category_id));
+
+  const catName = categories.find((c) => c.id === task.category_id)?.name ?? '—';
+
+  function handleSave() {
+    if (!title.trim() || !categoryId) return;
+    update.mutate(
+      { id: task.id, title: title.trim(), statement: statement.trim(), difficulty, category_id: Number(categoryId) },
+      { onSuccess: () => setEditing(false) },
+    );
+  }
+
+  function handleDelete() {
+    remove.mutate(task.id, { onSuccess: () => setConfirming(false) });
+  }
+
+  if (editing) {
+    return (
+      <div className={styles.listItem}>
+        <div className={styles.listItemBody} style={{ flex: 1 }}>
+          <input
+            className={styles.input}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Название задачи"
+          />
+          <textarea
+            className={`${styles.input} ${styles.textarea}`}
+            value={statement}
+            onChange={(e) => setStatement(e.target.value)}
+            placeholder="Условие задачи"
+            style={{ marginTop: 6 }}
+          />
+          <div className={styles.row} style={{ marginTop: 6, gap: 8 }}>
+            <select className={styles.select} value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+              <option value="easy">Лёгкая</option>
+              <option value="medium">Средняя</option>
+              <option value="hard">Сложная</option>
+            </select>
+            <select className={styles.select} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <option value="">Категория</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className={styles.inlineActions} style={{ marginTop: 8 }}>
+            <button className={styles.btnSave} onClick={handleSave} disabled={update.isPending}>
+              {update.isPending ? '...' : 'Сохранить'}
+            </button>
+            <button className={styles.btnCancel} onClick={() => {
+              setEditing(false);
+              setTitle(task.title);
+              setStatement(task.statement);
+              setDifficulty(task.difficulty);
+              setCategoryId(String(task.category_id));
+            }}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (confirming) {
+    return (
+      <div className={styles.listItem}>
+        <div className={styles.listItemBody}>
+          <span className={styles.itemName}>{task.title}</span>
+          <div className={styles.inlineActions}>
+            <span className={styles.confirmText}>Удалить?</span>
+            <button className={styles.btnDanger} onClick={handleDelete} disabled={remove.isPending}>
+              {remove.isPending ? '...' : 'Да'}
+            </button>
+            <button className={styles.btnCancel} onClick={() => setConfirming(false)}>Нет</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Управление банком задач</h1>
+    <div className={styles.listItem}>
+      <div className={styles.listItemBody} style={{ flex: 1 }}>
+        <div className={styles.taskHeader}>
+          <span className={styles.itemName}>{task.title}</span>
+          <DifficultyBadge value={task.difficulty} />
+        </div>
+        <p className={styles.taskStatement}>{task.statement}</p>
+        <span className={styles.itemDesc}>{catName}</span>
       </div>
+      <div className={styles.listItemActions}>
+        <button className={styles.iconBtn} onClick={() => setEditing(true)} title="Редактировать">✎</button>
+        <button className={styles.iconBtn} onClick={() => setConfirming(true)} title="Удалить">✕</button>
+      </div>
+    </div>
+  );
+}
 
-      {error && <div className={styles.error}>{error}</div>}
+// ── Main page ──────────────────────────────────────────────────────────────────
 
-      <div className={styles.grid}>
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Категории</h2>
-          <div className={styles.formRow}>
+export default function TaskBankManagePage() {
+  // ── Category form state
+  const [catName, setCatName]   = useState('');
+  const [catDesc, setCatDesc]   = useState('');
+
+  // ── Task form state
+  const [taskTitle, setTaskTitle]         = useState('');
+  const [taskStatement, setTaskStatement] = useState('');
+  const [taskDifficulty, setTaskDifficulty] = useState<Difficulty>('easy');
+  const [taskCategoryId, setTaskCategoryId] = useState('');
+
+  // ── Filter state
+  const [filterCategory,   setFilterCategory]   = useState('');
+  const [filterDifficulty, setFilterDifficulty] = useState('');
+
+  // ── Data
+  const categories = useCategories();
+  const tasks      = useTasks({ difficulty: filterDifficulty, category_id: filterCategory });
+
+  // ── Mutations
+  const createCat  = useCreateCategory();
+  const createTask = useCreateTask();
+
+  // ── Handlers
+  function handleAddCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!catName.trim()) return;
+    createCat.mutate(
+      { name: catName.trim(), description: catDesc.trim() },
+      { onSuccess: () => { setCatName(''); setCatDesc(''); } },
+    );
+  }
+
+  function handleAddTask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!taskTitle.trim() || !taskCategoryId) return;
+    createTask.mutate(
+      {
+        title: taskTitle.trim(),
+        statement: taskStatement.trim(),
+        difficulty: taskDifficulty,
+        category_id: Number(taskCategoryId),
+      },
+      { onSuccess: () => { setTaskTitle(''); setTaskStatement(''); setTaskDifficulty('easy'); setTaskCategoryId(''); } },
+    );
+  }
+
+  const cats = categories.data ?? [];
+
+  return (
+    <div className={styles.page}>
+      <h1 className={styles.pageTitle}>Банк задач</h1>
+
+      <div className={styles.columns}>
+
+        {/* ── Left: Categories ── */}
+        <div className={styles.card}>
+          <p className={styles.sectionLabel}>Категории</p>
+
+          {/* Add form */}
+          <form onSubmit={handleAddCategory} className={styles.addForm}>
             <input
               className={styles.input}
               placeholder="Название категории"
-              value={categoryForm.name}
-              onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
+              value={catName}
+              onChange={(e) => setCatName(e.target.value)}
+              required
             />
             <input
-              className={styles.input}
+              className={`${styles.input} ${styles.inputSm}`}
               placeholder="Описание (опционально)"
-              value={categoryForm.description}
-              onChange={(e) => setCategoryForm((p) => ({ ...p, description: e.target.value }))}
+              value={catDesc}
+              onChange={(e) => setCatDesc(e.target.value)}
+              style={{ marginTop: 8 }}
             />
-            <button type="button" className={styles.primaryBtn} onClick={() => { void saveCategory(); }}>
-              {editingCategoryId ? 'Сохранить' : 'Добавить'}
+            <button className={styles.btnAdd} type="submit" disabled={createCat.isPending} style={{ marginTop: 8 }}>
+              {createCat.isPending ? '...' : 'Добавить'}
             </button>
-          </div>
-          <div className={styles.list}>
-            {categories.map((category) => (
-              <div key={category.id} className={styles.listItem}>
-                <div>
-                  <div className={styles.itemTitle}>{category.name}</div>
-                  {category.description && <div className={styles.itemSub}>{category.description}</div>}
-                </div>
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={() => {
-                    setEditingCategoryId(category.id);
-                    setCategoryForm({
-                      name: category.name,
-                      description: category.description ?? '',
-                    });
-                  }}
-                >
-                  Редактировать
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
+          </form>
 
-        <section className={styles.card}>
-          <h2 className={styles.cardTitle}>Задачи</h2>
-          <div className={styles.filters}>
-            <select
-              className={styles.select}
-              value={selectedCategory ?? ''}
-              onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
-            >
+          <div className={styles.divider} />
+
+          {/* List */}
+          {categories.isLoading && <p className={styles.muted}>Загрузка...</p>}
+          {categories.isError   && <p className={styles.error}>Ошибка загрузки</p>}
+          {cats.map((cat) => (
+            <CategoryRow key={cat.id} cat={cat} categories={cats} />
+          ))}
+          {!categories.isLoading && !categories.isError && cats.length === 0 && (
+            <p className={styles.muted}>Нет категорий</p>
+          )}
+        </div>
+
+        {/* ── Right: Tasks ── */}
+        <div className={styles.card}>
+          <p className={styles.sectionLabel}>Задачи</p>
+
+          {/* Filters */}
+          <div className={styles.row} style={{ marginBottom: 16 }}>
+            <select className={styles.select} value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="">Все категории</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
+              {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-            <select
-              className={styles.select}
-              value={selectedDifficulty ?? ''}
-              onChange={(e) => setSelectedDifficulty((e.target.value as DifficultyLevel | '') || null)}
-            >
+            <select className={styles.select} value={filterDifficulty} onChange={(e) => setFilterDifficulty(e.target.value)}>
               <option value="">Любая сложность</option>
-              <option value="easy">easy</option>
-              <option value="medium">medium</option>
-              <option value="hard">hard</option>
+              <option value="easy">Лёгкая</option>
+              <option value="medium">Средняя</option>
+              <option value="hard">Сложная</option>
             </select>
-            <button type="button" className={styles.secondaryBtn} onClick={() => { void reload(); }}>
-              Обновить
-            </button>
           </div>
 
-          <div className={styles.formCol}>
+          {/* Add task form */}
+          <form onSubmit={handleAddTask} className={styles.addForm} style={{ marginBottom: 16 }}>
             <input
               className={styles.input}
               placeholder="Название задачи"
-              value={taskForm.title}
-              onChange={(e) => setTaskForm((p) => ({ ...p, title: e.target.value }))}
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              required
             />
             <textarea
-              className={styles.textarea}
+              className={`${styles.input} ${styles.textarea}`}
               placeholder="Условие задачи"
-              value={taskForm.statement}
-              onChange={(e) => setTaskForm((p) => ({ ...p, statement: e.target.value }))}
+              value={taskStatement}
+              onChange={(e) => setTaskStatement(e.target.value)}
+              style={{ marginTop: 8 }}
             />
-            <div className={styles.formRow}>
+            <div className={styles.row} style={{ marginTop: 8, gap: 8 }}>
               <select
                 className={styles.select}
-                value={taskForm.difficulty}
-                onChange={(e) => setTaskForm((p) => ({ ...p, difficulty: e.target.value as DifficultyLevel }))}
+                value={taskDifficulty}
+                onChange={(e) => setTaskDifficulty(e.target.value as Difficulty)}
+                required
               >
-                <option value="easy">easy</option>
-                <option value="medium">medium</option>
-                <option value="hard">hard</option>
+                <option value="easy">Лёгкая</option>
+                <option value="medium">Средняя</option>
+                <option value="hard">Сложная</option>
               </select>
               <select
                 className={styles.select}
-                value={taskForm.category_id}
-                onChange={(e) => setTaskForm((p) => ({ ...p, category_id: e.target.value }))}
+                value={taskCategoryId}
+                onChange={(e) => setTaskCategoryId(e.target.value)}
+                required
               >
                 <option value="">Категория</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={String(c.id)}>{c.name}</option>
-                ))}
+                {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-              <button type="button" className={styles.primaryBtn} onClick={() => { void saveTask(); }}>
-                {editingTaskId ? 'Сохранить' : 'Добавить'}
+              <button className={styles.btnAdd} type="submit" disabled={createTask.isPending}>
+                {createTask.isPending ? '...' : 'Добавить'}
               </button>
             </div>
-          </div>
+          </form>
 
-          <div className={styles.list}>
-            {!loading && tasks.map((task) => (
-              <div key={task.id} className={styles.listItem}>
-                <div>
-                  <div className={styles.itemTitle}>
-                    {task.title} <span className={styles.badge}>{task.difficulty}</span>
-                  </div>
-                  <div className={styles.itemSub}>{categoryNameById.get(task.category_id) ?? `#${task.category_id}`}</div>
-                </div>
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={() => {
-                    setEditingTaskId(task.id);
-                    setTaskForm({
-                      title: task.title,
-                      statement: task.statement,
-                      difficulty: task.difficulty,
-                      category_id: String(task.category_id),
-                    });
-                  }}
-                >
-                  Редактировать
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
+          <div className={styles.divider} />
+
+          {/* List */}
+          {tasks.isLoading && <p className={styles.muted}>Загрузка...</p>}
+          {tasks.isError   && <p className={styles.error}>Ошибка загрузки</p>}
+          {(tasks.data ?? []).map((task) => (
+            <TaskRow key={task.id} task={task} categories={cats} />
+          ))}
+          {!tasks.isLoading && !tasks.isError && (tasks.data ?? []).length === 0 && (
+            <p className={styles.muted}>Нет задач</p>
+          )}
+        </div>
+
       </div>
     </div>
   );

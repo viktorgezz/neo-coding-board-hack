@@ -60,7 +60,7 @@ export default function CandidateJoinPage() {
     // Guard — should never fire with a correctly configured router,
     // but avoids a network call to '/api/v1/rooms/join-info/undefined'
     if (!idRoom) {
-      setVacancyError('Invalid interview room link.');
+      setVacancyError('Неверная ссылка на комнату собеседования.');
       setIsLoadingVacancy(false);
       return;
     }
@@ -71,24 +71,24 @@ export default function CandidateJoinPage() {
         const res = await fetch(`/api/v1/rooms/join-info/${idRoom}`);
 
         if (res.status === 404) {
-          setVacancyError('This interview room does not exist.');
+          setVacancyError('Комната для собеседования не найдена.');
           return;
         }
         if (!res.ok) {
-          setVacancyError('Unable to load interview details. Try again later.');
+          setVacancyError('Не удалось загрузить данные собеседования. Попробуйте позже.');
           return;
         }
 
         const data = await res.json() as JoinInfoResponse;
 
         if (data.status === 'FINISHED') {
-          setVacancyError('This interview has already ended.');
+          setVacancyError('Это собеседование уже завершено.');
           return;
         }
 
         setVacancyName(data.nameVacancy);
       } catch {
-        setVacancyError('Network error. Check your connection.');
+        setVacancyError('Ошибка сети. Проверьте подключение.');
       } finally {
         setIsLoadingVacancy(false);
       }
@@ -123,21 +123,22 @@ export default function CandidateJoinPage() {
       });
 
       if (!res.ok) {
-        setSubmitError('Registration failed. The room may no longer be active.');
+        setSubmitError('Не удалось зарегистрироваться. Комната может быть уже неактивна.');
         return;
       }
 
       const { tokenAccess } = await res.json() as RegisterResponse;
 
-      // Store in module-level variable — NOT React state, NOT localStorage.
-      // CandidateEditorPage reads getCandidateToken() to attach to WebSocket.
-      setCandidateSession(tokenAccess, idRoom);
+      // Store token, room ID, and vacancy name in the module-level session.
+      // Passing vacancyName ensures the editor shows the same vacancy the
+      // join page fetched — no extra round-trip needed.
+      setCandidateSession(tokenAccess, idRoom, vacancyName ?? '');
 
       // replace: false — browser back button from the editor = leave session,
       // not loop back to this join page with a stale state
       navigate(`/session/${idRoom}/candidate`);
     } catch {
-      setSubmitError('Network error. Check your connection and try again.');
+      setSubmitError('Ошибка сети. Проверьте подключение и попробуйте ещё раз.');
     } finally {
       setIsSubmitting(false);
     }
@@ -184,16 +185,16 @@ export default function CandidateJoinPage() {
             <div aria-live="polite">
               {isLoadingVacancy ? (
                 // Static skeleton — no animation (spec requirement)
-                <div className={styles.vacancySkeleton} aria-label="Loading interview details…" />
+                <div className={styles.vacancySkeleton} aria-label="Загрузка данных собеседования…" />
               ) : (
                 <>
-                  <span className={styles.vacancyPrefix}>Interview for</span>
+                  <span className={styles.vacancyPrefix}>Собеседование на вакансию</span>
                   <span className={styles.vacancyName}>{vacancyName}</span>
                 </>
               )}
             </div>
 
-            <h1 className={styles.joinTitle}>Enter your name</h1>
+            <h1 className={styles.joinTitle}>Введите ваше имя</h1>
 
             <form
               className={styles.joinForm}
@@ -201,13 +202,13 @@ export default function CandidateJoinPage() {
             >
               <div className={styles.fieldGroup}>
                 <label htmlFor="candidate-name" className={styles.label}>
-                  Full name
+                  ФИО
                 </label>
                 <input
                   id="candidate-name"
                   type="text"
                   autoComplete="name"
-                  placeholder="Your full name"
+                  placeholder="Ваше ФИО"
                   className={styles.input}
                   value={nameCandidate}
                   onChange={(e) => setNameCandidate(e.target.value)}
@@ -223,9 +224,9 @@ export default function CandidateJoinPage() {
 
               <button type="submit" className={submitBtnClass}>
                 {isSubmitting ? (
-                  <span className={styles.spinner} aria-label="Joining…" />
+                  <span className={styles.spinner} aria-label="Вход…" />
                 ) : (
-                  'Join Interview'
+                  'Войти на собеседование'
                 )}
               </button>
             </form>

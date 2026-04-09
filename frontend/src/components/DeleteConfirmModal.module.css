@@ -1,8 +1,8 @@
-/* ── Overlay — same token as CreateUserModal and VerdictModal ── */
+/* ── Overlay ── */
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,9 +13,9 @@
 .deleteCard {
   width: 380px;
   max-width: calc(100vw - 32px);
-  background: #111;
-  border: 1px solid #1f1f1f;
-  border-radius: 10px;
+  background: var(--bg-card);
+  border: var(--border-default);
+  border-radius: var(--radius-card);
   padding: 24px;
 }
 
@@ -23,7 +23,7 @@
 .deleteTitle {
   font-size: 15px;
   font-weight: 600;
-  color: #e5e5e5;
+  color: var(--text-primary);
   margin: 0;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
@@ -31,7 +31,7 @@
 /* ── Body ── */
 .deleteBody {
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
   margin: 12px 0 20px;
   font-family: ui-sans-serif, system-ui, sans-serif;
   line-height: 1.5;
@@ -40,7 +40,7 @@
 /* ── Error ── */
 .deleteError {
   font-size: 12px;
-  color: #f87171;
+  color: var(--color-failed);
   margin: 0 0 12px;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
@@ -55,7 +55,7 @@
 .cancelBtn {
   background: none;
   border: none;
-  color: #555;
+  color: var(--text-muted);
   font-size: 13px;
   font-family: ui-sans-serif, system-ui, sans-serif;
   cursor: pointer;
@@ -63,7 +63,7 @@
 }
 
 .cancelBtn:hover:not(:disabled) {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .cancelBtn:disabled {
@@ -74,10 +74,10 @@
 .confirmDeleteBtn {
   height: 34px;
   padding: 0 14px;
-  background: #dc2626;
-  border: none;
-  border-radius: 6px;
-  color: #fff;
+  background: transparent;
+  border: 1px solid var(--color-failed);
+  border-radius: var(--radius-input);
+  color: var(--color-failed);
   font-size: 13px;
   font-weight: 500;
   font-family: ui-sans-serif, system-ui, sans-serif;
@@ -89,7 +89,7 @@
 }
 
 .confirmDeleteBtn:hover:not(:disabled) {
-  background: #b91c1c;
+  background: rgba(160, 80, 80, 0.1);
 }
 
 .confirmDeleteBtn:disabled {
@@ -97,13 +97,13 @@
   cursor: not-allowed;
 }
 
-/* ── Spinner — inside confirm button ── */
+/* ── Spinner ── */
 .spinner {
   display: inline-block;
   width: 14px;
   height: 14px;
   border: 2px solid transparent;
-  border-top-color: #fff;
+  border-top-color: var(--color-failed);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

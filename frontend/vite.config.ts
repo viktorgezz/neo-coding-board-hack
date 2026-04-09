@@ -310,4 +310,16 @@ export default defineConfig({
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
   },
+  server: {
+    proxy: {
+      // Tasks Bank Service — proxied to avoid CORS in dev.
+      // Requests to /tasks-api/* are forwarded to http://72.56.248.147:8001/*
+      // with the /tasks-api prefix stripped.
+      '/tasks-api': {
+        target:      'http://72.56.248.147:8001',
+        changeOrigin: true,
+        rewrite:     (path) => path.replace(/^\/tasks-api/, ''),
+      },
+    },
+  },
 });

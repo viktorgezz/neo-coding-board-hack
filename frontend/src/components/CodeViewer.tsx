@@ -1,45 +1,41 @@
 /**
- * CodeViewer — Monaco workspace for interviewer room.
+ * CodeViewer — Monaco editor for the interviewer room.
  *
- * Three concurrent concerns, all isolated to this component:
+ * Three concurrent concerns:
  *
  *   1. WS subscription (useWebSocket, role='interviewer')
- *      liveCode  → editor.setValue() imperatively (no React re-render)
- *      liveCursor → deltaDecorations() — purple left-border at candidate pos
+ *      liveCode   → editor.setValue() imperatively (echo-suppressed)
+ *      liveCursor → deltaDecorations() — candidate cursor decoration
  *
  *   2. Initial code snapshot (GET /code/latest on mount)
- *      Sets initial editor content + language BEFORE the first WS message.
- *      Handles two race conditions:
- *        (a) fetch resolves before Monaco mounts → stored in refs, applied in onMount
- *        (b) Monaco mounts before fetch resolves → applied directly via editorRef
+ *      Sets editor content + language before the first WS message.
+ *      Handles the race between fetch and Monaco mount via refs.
  *
- *   3. Status indicator (top-right dot)
- *      isConnected → green "Live" | disconnected → red "Отключён"
- *      error       → 32px banner above Monaco + onError() callback to parent
+ *   3. Error banner — shown inside the editor area when WS is lost.
  *
- * DO NOT use Monaco's `value` prop — every candidate keystroke would cause
- * a React re-render and reconciliation. Use editor.setValue() imperatively.
+ * Interviewer edits:
+ *   The editor is NOT read-only. When the interviewer types, onChange →
+ *   sendCode() → debounced STOMP publish. The echo (same content coming
+ *   back via liveCode) is suppressed by comparing current editor content
+ *   before calling setValue(), preventing cursor-position resets.
+ *
+ * Language and cursor-visibility state are controlled by the parent
+ * (InterviewerRoomPage) and passed as props so the page-level header
+ * can render the language selector and cursor toggle.
  */
 
-import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react';
-import type { OnMount } from '@monaco-editor/react';
+import { lazy, Suspense, useEffect, useRef, useCallback } from 'react';
+import type { OnMount, OnChange } from '@monaco-editor/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCursorSocket } from '@/hooks/useCursorSocket';
-import LanguageSelector from './LanguageSelector';
 import styles from './CodeViewer.module.css';
 
-// Module-scope lazy import — must NOT be inside the component.
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
-// Types derived from OnMount to avoid a direct 'monaco-editor' import.
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
 type Monaco                = Parameters<OnMount>[1];
 
-// Stable Monaco options — defined at module scope so the object reference
-// never changes between renders, preventing Monaco option re-application.
 const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
-  readOnly:             false,
-  domReadOnly:          false,
   fontSize:             15,
   minimap:              { enabled: false },
   scrollBeyondLastLine: false,
@@ -48,49 +44,72 @@ const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
   renderLineHighlight:  'none',
   overviewRulerLanes:   0,
   cursorStyle:          'line',
-  cursorBlinking:       'solid',
+  cursorBlinking:       'blink',
 };
 
 const EDITOR_FALLBACK = <div className={styles.editorFallback} />;
 
 export interface CodeViewerProps {
-  idRoom:    string;
-  token:     string;
-  onConnect: () => void;
-  onError:   (msg: string) => void;
+  idRoom:           string;
+  token:            string;
+  /** Controlled by parent — drives Monaco language mode. */
+  language:         string;
+  onLanguageChange: (lang: string) => void;
+  /** Controlled by parent — gates sendCursorPosition calls. */
+  showCursor:       boolean;
+  onConnect:        () => void;
+  onError:          (msg: string) => void;
 }
 
 export default function CodeViewer({
   idRoom,
   token,
+  language,
+  onLanguageChange,
+  showCursor,
   onConnect,
   onError,
 }: CodeViewerProps) {
-  const [language, setLanguage] = useState('plaintext');
-  // ── Refs ────────────────────────────────────────────────────────────────
 
-  const editorRef       = useRef<IStandaloneCodeEditor | null>(null);
-  /** Monaco instance — stored in onMount so fetchInitialCode can call setModelLanguage. */
-  const monacoRef       = useRef<Monaco | null>(null);
-  /** Previous decoration IDs — must be passed to deltaDecorations for cleanup. */
-  const decorationsRef  = useRef<string[]>([]);
-  /** Pre-fetched initial code — applied in onMount if editor not yet mounted. */
-  const initialCodeRef  = useRef<string | null>(null);
-  /** Pre-fetched initial language. */
-  const initialLangRef  = useRef<string | null>(null);
+  // ── Refs ──────────────────────────────────────────────────────────────
 
-  // ── WebSocket (interviewer mode — subscribe only, no publish) ─────────
+  const editorRef      = useRef<IStandaloneCodeEditor | null>(null);
+  const monacoRef      = useRef<Monaco | null>(null);
+  const decorationsRef = useRef<string[]>([]);
+  const initialCodeRef = useRef<string | null>(null);
+  const initialLangRef = useRef<string | null>(null);
+  /**
+   * Always holds the latest liveCode.textContent.
+   * Written before calling setValue() so handleEditorMount can apply the
+   * correct value even when Monaco mounts after the first liveCode update.
+   */
+  const liveCodeRef    = useRef<string | null>(null);
+  /**
+   * Mirrors the showCursor prop inside the stable handleEditorMount callback.
+   * Using a ref avoids re-registering the Monaco cursor listener on every toggle.
+   */
+  const showCursorRef  = useRef(showCursor);
 
-  const { liveCode, liveCursor, isConnected, error } = useWebSocket({
+  useEffect(() => {
+    showCursorRef.current = showCursor;
+  }, [showCursor]);
+
+  /** Tracks previous showCursor value to detect true→false transitions. */
+  const prevShowCursorRef = useRef(showCursor);
+
+  // ── WebSocket ─────────────────────────────────────────────────────────
+
+  const { liveCode, liveCursor, isConnected, error, sendCode } = useWebSocket({
     idRoom,
-    role:  'interviewer',
+    role:       'interviewer',
     token,
+    idLanguage: language, // keep hook's idLanguageRef in sync with parent language
   });
   const {
-    isConnected: isCursorConnected,
-    error: cursorError,
+    error:              cursorError,
     cursorFromCandidate,
     sendCursorPosition,
+    sendCursorHide,
   } = useCursorSocket({
     interviewId: idRoom,
     role: 'interviewer',
@@ -98,18 +117,20 @@ export default function CodeViewer({
 
   // ── Notify parent of connection events ────────────────────────────────
 
-  useEffect(() => {
-    if (isConnected) onConnect();
-  }, [isConnected, onConnect]);
+  useEffect(() => { if (isConnected) onConnect(); }, [isConnected, onConnect]);
+  useEffect(() => { if (error)       onError(error); }, [error, onError]);
+
+  // ── Cursor hide signal — fires when showCursor transitions true→false ─
 
   useEffect(() => {
-    if (error) onError(error);
-  }, [error, onError]);
+    const prev = prevShowCursorRef.current;
+    prevShowCursorRef.current = showCursor;
+    if (prev && !showCursor) {
+      sendCursorHide();
+    }
+  }, [showCursor, sendCursorHide]);
 
-  // ── Initial code snapshot (mount, runs once) ──────────────────────────
-  // The WS hook also fetches code/latest in handleConnect(), but that only
-  // exposes textContent. This separate fetch also captures idLanguage so we
-  // can set Monaco's language mode on first render.
+  // ── Initial code snapshot ─────────────────────────────────────────────
 
   useEffect(() => {
     async function fetchInitialCode() {
@@ -122,12 +143,10 @@ export default function CodeViewer({
         const code = data.textContent ?? '';
         const lang = data.idLanguage   ?? 'plaintext';
 
-        // Store for onMount in case editor hasn't mounted yet
         initialCodeRef.current = code;
         initialLangRef.current = lang;
-        setLanguage(lang);
+        onLanguageChange(lang);
 
-        // Apply immediately if editor is already mounted
         if (editorRef.current) {
           editorRef.current.setValue(code);
           const model = editorRef.current.getModel();
@@ -136,22 +155,28 @@ export default function CodeViewer({
           }
         }
       } catch {
-        // Non-fatal — WS stream will populate content as candidate types
+        // Non-fatal — WS stream will populate content
       }
     }
     void fetchInitialCode();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── liveCode → editor.setValue() ─────────────────────────────────────
-  // Imperative update bypasses React reconciliation — critical for typing latency.
+  // ── liveCode → setValue() ─────────────────────────────────────────────
+  // Echo suppression: if the content arriving from STOMP is identical to
+  // what's already in the editor (our own edit echoed back), skip setValue.
+  // This prevents the cursor position from being reset when the interviewer
+  // is actively typing.
 
   useEffect(() => {
-    if (liveCode !== null && editorRef.current) {
-      editorRef.current.setValue(liveCode.textContent);
-    }
+    if (liveCode === null) return;
+    liveCodeRef.current = liveCode.textContent;
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (editor.getValue() === liveCode.textContent) return; // suppress own echo
+    editor.setValue(liveCode.textContent);
   }, [liveCode]);
 
-  // ── liveCursor → deltaDecorations (candidate cursor decoration) ────────
+  // ── liveCursor → deltaDecorations ────────────────────────────────────
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -162,9 +187,6 @@ export default function CodeViewer({
       : liveCursor;
     if (!sourceCursor) return;
 
-    // deltaDecorations: clear previous IDs, apply new decoration.
-    // 'candidate-cursor-decoration' is a :global() CSS class in CodeViewer.module.css
-    // that adds border-left: 2px solid #7c3aed at the candidate's cursor column.
     const newIds = editor.deltaDecorations(decorationsRef.current, [
       {
         range: {
@@ -173,74 +195,73 @@ export default function CodeViewer({
           endLineNumber:   sourceCursor.cursorLine,
           endColumn:       sourceCursor.cursorCh,
         },
-        options: {
-          className: 'candidate-cursor-decoration',
-        },
+        options: { className: 'candidate-cursor-decoration' },
       },
     ]);
     decorationsRef.current = newIds;
   }, [liveCursor, cursorFromCandidate]);
 
-  // ── onMount: store editor ref, apply pre-fetched initial code ─────────
+  // ── language prop → setModelLanguage ─────────────────────────────────
+
+  useEffect(() => {
+    const model = editorRef.current?.getModel();
+    if (model && monacoRef.current) {
+      monacoRef.current.editor.setModelLanguage(model, language);
+    }
+  }, [language]);
+
+  // ── onChange — interviewer edits ──────────────────────────────────────
+
+  const handleEditorChange = useCallback<OnChange>((value) => {
+    sendCode(value ?? '');
+  }, [sendCode]);
+
+  // ── onMount ───────────────────────────────────────────────────────────
 
   const handleEditorMount = useCallback<OnMount>((editor, monaco) => {
-    editorRef.current   = editor;
-    monacoRef.current   = monaco;
+    editorRef.current  = editor;
+    monacoRef.current  = monaco;
 
-    editor.onDidChangeCursorPosition((e) => {
-      sendCursorPosition(e.position.lineNumber, e.position.column);
+    // Use onDidChangeCursorSelection to capture both cursor moves and selections.
+    editor.onDidChangeCursorSelection((e) => {
+      if (!showCursorRef.current) return;
+      const sel = e.selection;
+      if (sel.isEmpty()) {
+        // Plain cursor move — no selection
+        sendCursorPosition(sel.positionLineNumber, sel.positionColumn);
+      } else {
+        // Interviewer has a text range selected — send selection bounds too
+        sendCursorPosition(sel.positionLineNumber, sel.positionColumn, {
+          selStartLine: sel.startLineNumber,
+          selStartCol:  sel.startColumn,
+          selEndLine:   sel.endLineNumber,
+          selEndCol:    sel.endColumn,
+        });
+      }
     });
 
-    // Apply initial code if the fetch already resolved before Monaco mounted
-    if (initialCodeRef.current !== null) {
-      editor.setValue(initialCodeRef.current);
-    }
+    // Apply the best available snapshot — liveCodeRef preferred over initialCodeRef
+    const code = liveCodeRef.current ?? initialCodeRef.current;
+    if (code !== null) editor.setValue(code);
+
     if (initialLangRef.current !== null) {
       const model = editor.getModel();
       if (model) monaco.editor.setModelLanguage(model, initialLangRef.current);
     }
-  }, [sendCursorPosition]); // stable — only called once by Monaco on first mount
+  }, [sendCursorPosition]); // stable — registered once on Monaco first mount
 
-  const handleLanguageChange = useCallback((lang: string) => {
-    setLanguage(lang);
-    const model = editorRef.current?.getModel();
-    if (model && monacoRef.current) {
-      monacoRef.current.editor.setModelLanguage(model, lang);
-    }
-  }, []);
-
-  // ── Render ─────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────
 
   return (
     <div className={styles.codeViewerRoot}>
 
-      {/* Status dot — top right of header */}
-      <div className={styles.viewerHeader}>
-        <div className={styles.statusBlock}>
-          <span
-            className={`${styles.statusDot} ${
-            isConnected || isCursorConnected ? styles.statusDotConnected : styles.statusDotDisconnected
-            }`}
-          />
-          <span
-            className={`${styles.statusLabel} ${
-              isConnected || isCursorConnected ? styles.statusLabelConnected : styles.statusLabelDisconnected
-            }`}
-          >
-            {isConnected || isCursorConnected ? 'Live' : 'Отключён'}
-          </span>
-        </div>
-        <LanguageSelector value={language} onChange={handleLanguageChange} />
-      </div>
-
-      {/* WS error banner — rendered above Monaco when connection is lost */}
+      {/* Error banner — inside the editor area, not in the page header */}
       {(error !== null || cursorError !== null) && (
         <div className={styles.errorBanner} role="alert">
           Соединение потеряно. Проверьте каналы code/cursor.
         </div>
       )}
 
-      {/* Monaco — read-only, fills remaining height */}
       <div className={styles.editorWrapper}>
         <Suspense fallback={EDITOR_FALLBACK}>
           <MonacoEditor
@@ -250,6 +271,7 @@ export default function CodeViewer({
             defaultValue=""
             options={MONACO_OPTIONS}
             onMount={handleEditorMount}
+            onChange={handleEditorChange}
           />
         </Suspense>
       </div>

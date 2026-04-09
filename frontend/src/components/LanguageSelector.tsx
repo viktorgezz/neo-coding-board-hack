@@ -10,13 +10,13 @@
 import { memo } from 'react';
 import styles from './LanguageSelector.module.css';
 
-export const SUPPORTED_LANGUAGES: ReadonlyArray<{ id: string; label: string }> = [
-  { id: 'kotlin',     label: 'Kotlin'     },
-  { id: 'java',       label: 'Java'       },
-  { id: 'javascript', label: 'JavaScript' },
-  { id: 'typescript', label: 'TypeScript' },
-  { id: 'python',     label: 'Python'     },
-  { id: 'go',         label: 'Go'         },
+export const SUPPORTED_LANGUAGES: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'Python',     label: 'Python'     },
+  { value: 'Java',       label: 'Java'       },
+  { value: 'Kotlin',     label: 'Kotlin'     },
+  { value: 'JavaScript', label: 'JavaScript' },
+  { value: 'C++',        label: 'C++'        },
+  { value: 'Bash',       label: 'Bash'       },
 ];
 
 export interface LanguageSelectorProps {
@@ -36,7 +36,7 @@ const LanguageSelector = memo(function LanguageSelector({
       aria-label="Programming language"
     >
       {SUPPORTED_LANGUAGES.map((lang) => (
-        <option key={lang.id} value={lang.id}>
+        <option key={lang.value} value={lang.value}>
           {lang.label}
         </option>
       ))}

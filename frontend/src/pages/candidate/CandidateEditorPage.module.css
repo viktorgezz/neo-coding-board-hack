@@ -30,9 +30,25 @@
   gap: 16px;
 }
 
+/* Logo + vacancy name — left group, fills remaining space */
+.vacancyGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.neoflexLogo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 /* Vacancy name — left side, fills remaining space */
 .vacancyName {
-  flex: 1;
   font-size: 13px;
   color: #888;
   font-family: ui-sans-serif, system-ui, sans-serif;
@@ -86,4 +102,10 @@
     border-left-color: #67e8f9;
     box-shadow: 0 0 8px 1px rgba(34, 211, 238, 0.85);
   }
+}
+
+/* Interviewer selection highlight — teal tint over selected text range */
+:global(.interviewer-selection-inline) {
+  background: rgba(34, 211, 238, 0.18) !important;
+  border-radius: 2px;
 }

@@ -1,4 +1,4 @@
-/* ── Viewer shell ─────────────────────────────────────────────────────── */
+/* ── Viewer shell — fills the codeColumn ─────────────────────────────── */
 
 .codeViewerRoot {
   height: 100%;
@@ -6,54 +6,6 @@
   flex-direction: column;
   background: #1e1e1e; /* Monaco vs-dark bg — no gap visible on mount */
   overflow: hidden;
-}
-
-/* ── Header: WS status indicator ─────────────────────────────────────── */
-
-.viewerHeader {
-  height: 52px;
-  flex-shrink: 0;
-  background: #0d0d0d;
-  border-bottom: 1px solid #1a1a1a;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  gap: 12px;
-}
-
-.statusBlock {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.statusDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.statusDotConnected {
-  background: #22c55e;
-}
-
-.statusDotDisconnected {
-  background: #f87171;
-}
-
-.statusLabel {
-  font-size: 13px;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.statusLabelConnected {
-  color: #22c55e;
-}
-
-.statusLabelDisconnected {
-  color: #f87171;
 }
 
 /* ── WS error banner — above Monaco ──────────────────────────────────── */
@@ -84,23 +36,12 @@
 
 /* ── Candidate cursor decoration ──────────────────────────────────────── */
 
-/*
- * :global() escapes CSS Module scoping so Monaco can apply this class
- * to its own DOM elements via deltaDecorations(). Without :global(),
- * the generated hash would not match the className string we pass to Monaco.
- */
 :global(.candidate-cursor-decoration) {
   border-left: 2px solid #7c3aed;
   animation: candidateCursorBlink 0.9s step-end infinite;
 }
 
 @keyframes candidateCursorBlink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0.2;
-  }
+  0%,  49% { opacity: 1;   }
+  50%, 100% { opacity: 0.2; }
 }

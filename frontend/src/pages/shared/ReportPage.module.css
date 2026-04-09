@@ -1,206 +1,150 @@
+/* ── Root ──────────────────────────────────────────────────────────────── */
+
 .reportRoot {
-  height: 100%;
-  overflow-y: auto;
-  padding: 20px;
-  background: #0b0b0b;
-  color: #e5e7eb;
+  padding: 28px 32px;
+  background: #0d0d14;
+  color: #c0c0e0;
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
+
+/* ── Header ───────────────────────────────────────────────────────────── */
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
   gap: 12px;
 }
 
 .title {
   margin: 0;
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
+  color: #e0e0ff;
 }
 
 .subtitle {
   margin: 4px 0 0;
-  color: #9ca3af;
-  font-size: 14px;
+  color: #6060a0;
+  font-size: 13px;
 }
 
 .verdict {
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-weight: 700;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .verdictPassed {
-  background: #052e1c;
-  border: 1px solid #14532d;
-  color: #4ade80;
+  background: transparent;
+  border: 1px solid #1D9E75;
+  color: #1D9E75;
 }
+
+.verdictFailed {
+  background: transparent;
+  border: 1px solid #A32D2D;
+  color: #A32D2D;
+}
+
+/* ── Metric cards row ─────────────────────────────────────────────────── */
 
 .metricsGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .metricCard {
-  border: 1px solid #1f2937;
-  border-radius: 10px;
-  padding: 12px;
-  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  background: #13131f;
 }
 
 .metricLabel {
   display: block;
-  color: #94a3b8;
-  font-size: 12px;
+  color: #6060a0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
 }
 
 .metricValue {
-  margin-top: 6px;
   display: block;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.chartGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.chartCard {
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-  padding: 12px;
-  background: #0f172a;
-  min-height: 340px;
-}
-
-.chartTitle {
-  margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.sectionGrid {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr;
-  gap: 14px;
-}
-
-.sectionCard {
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-  padding: 12px;
-  background: #111827;
-}
-
-.sectionTitle {
-  margin: 0 0 10px;
-  font-size: 16px;
-}
-
-.noteList {
-  max-height: 260px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.noteRow {
-  border: 1px solid #273244;
-  border-radius: 8px;
-  padding: 8px;
-  background: #0f172a;
-}
-
-.noteTime {
-  color: #93c5fd;
-  font-size: 12px;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.noteText {
-  margin: 0;
-  color: #d1d5db;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.kvList {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.kvRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 14px;
-}
-
-.kvKey {
-  color: #9ca3af;
-}
-
-.kvValue {
-  color: #f3f4f6;
+  font-size: 28px;
   font-weight: 600;
+  color: #e0e0ff;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Courier New', Courier, monospace;
 }
+
+/* ── AI Summary section ───────────────────────────────────────────────── */
 
 .aiCard {
-  margin-top: 14px;
-  border: 1px solid #1f2937;
-  border-radius: 12px;
-  padding: 14px;
-  background: #0f172a;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  background: #13131f;
 }
 
 .aiGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  margin-top: 14px;
 }
 
 .aiPositive {
-  border: 1px solid #14532d;
-  border-radius: 10px;
-  padding: 10px;
-  background: #052e1c;
-  color: #dcfce7;
+  border: 1px solid rgba(29, 158, 117, 0.3);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #13131f;
 }
 
 .aiNegative {
-  border: 1px solid #7f1d1d;
-  border-radius: 10px;
-  padding: 10px;
-  background: #3f1414;
-  color: #fee2e2;
+  border: 1px solid rgba(163, 45, 45, 0.3);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #13131f;
 }
 
 .aiRecommendation {
   margin-top: 12px;
-  border: 1px solid #5b21b6;
-  border-radius: 10px;
-  padding: 10px;
-  background: #2e1065;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #13131f;
 }
 
 .aiTitle {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 700;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Descendant selectors so each sub-card's title gets the right accent */
+.aiPositive .aiTitle {
+  color: #1D9E75;
+}
+
+.aiNegative .aiTitle {
+  color: #A05050;
+}
+
+.aiRecommendation .aiTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6060a0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .aiList {
@@ -209,25 +153,185 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c0c0e0;
 }
 
 .aiRecommendationText {
   margin: 0;
-  color: #ede9fe;
+  color: #c0c0e0;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
-@media (max-width: 1200px) {
-  .metricsGrid,
-  .chartGrid,
+/* ── Shared section title ─────────────────────────────────────────────── */
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6060a0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ── Chart grid ───────────────────────────────────────────────────────── */
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.chartCard {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  background: #13131f;
+  min-height: 340px;
+}
+
+.chartTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6060a0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── Bottom section grid ──────────────────────────────────────────────── */
+
+.sectionGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 14px;
+}
+
+.sectionCard {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 16px;
+  background: #13131f;
+}
+
+/* ── Notes list (Метрики интервьюера) ─────────────────────────────────── */
+
+.noteList {
+  max-height: 260px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a5c transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+.noteRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.noteRow:last-child {
+  border-bottom: none;
+}
+
+.noteTime {
+  color: #6060a0;
+  font-size: 12px;
+  font-family: 'Courier New', Courier, monospace;
+  flex-shrink: 0;
+  min-width: 60px;
+}
+
+.noteText {
+  margin: 0;
+  color: #c0c0e0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* ── Key/value rows (Техническая интерпретация, Ручные оценки) ───────── */
+
+.kvList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kvRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.kvKey {
+  color: #6060a0;
+}
+
+.kvValue {
+  color: #e0e0ff;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+
+/* Large tablet / small laptop */
+@media (max-width: 1100px) {
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sectionGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Tablet portrait */
+@media (max-width: 860px) {
+  .reportRoot {
+    padding: 20px 20px;
+  }
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .aiGrid {
+    grid-template-columns: 1fr;
+  }
+  .chartGrid {
+    grid-template-columns: 1fr;
+  }
   .sectionGrid {
     grid-template-columns: 1fr;
   }
+}
 
-  .aiGrid {
-    grid-template-columns: 1fr;
+/* Mobile */
+@media (max-width: 640px) {
+  .reportRoot {
+    padding: 14px 12px;
+  }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .title {
+    font-size: 18px;
+  }
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .metricValue {
+    font-size: 22px;
+  }
+  .chartCard {
+    min-height: 260px;
   }
 }

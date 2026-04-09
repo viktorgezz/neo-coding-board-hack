@@ -231,13 +231,6 @@ export default function HRDashboardPage() {
       {/* ── Page header ── */}
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Все кандидаты</h1>
-        <button
-          type="button"
-          className={styles.manageTaskBankBtn}
-          onClick={() => navigate('/task-bank/manage')}
-        >
-          Управление задачами
-        </button>
       </div>
 
       {/* ── Controls bar: status tabs (left) + search input (right) ── */}

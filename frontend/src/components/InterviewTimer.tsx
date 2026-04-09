@@ -39,11 +39,15 @@ const InterviewTimer = memo(function InterviewTimer({ startTime }: InterviewTime
   return (
     <span
       style={{
-        fontFamily: "'Courier New', monospace",
+        fontFamily: "'Courier New', Courier, monospace",
+        fontVariantNumeric: 'tabular-nums',
         fontSize: '13px',
-        color: '#555',
+        color: '#7B9EA6',
         flexShrink: 0,
         userSelect: 'none',
+        background: 'rgba(255,255,255,0.06)',
+        padding: '6px 16px',
+        borderRadius: '6px',
       }}
     >
       {formatElapsed(elapsed)}

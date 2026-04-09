@@ -130,10 +130,10 @@ export function useWebSocket({
 
   // ── State — one update per discrete user-visible change ───────────────
 
-  const [isConnected, setIsConnected] = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [liveCode,    setLiveCode]    = useState<LiveCodeState | null>(null);
-  const [liveCursor,  setLiveCursor]  = useState<LiveCursorState | null>(null);
+  const [isConnected,      setIsConnected]      = useState(false);
+  const [error,            setError]            = useState<string | null>(null);
+  const [liveCode,         setLiveCode]         = useState<LiveCodeState | null>(null);
+  const [liveCursor,       setLiveCursor]       = useState<LiveCursorState | null>(null);
 
   // ── idLanguage prop → ref sync ────────────────────────────────────────
   // Separate effect so it does NOT re-run the main STOMP effect when the
@@ -233,8 +233,7 @@ export function useWebSocket({
           );
         }
       }
-      // candidate mode: no subscription, no initial fetch.
-      // Sending is handled by sendCode() and sendCursor() below.
+      // candidate: sending is handled by sendCode() and sendCursor() below.
     }
 
     // ── Create and activate STOMP client ──────────────────────────────
@@ -283,8 +282,6 @@ export function useWebSocket({
   // ── sendCode — stable ref, debounced 300ms ────────────────────────────
 
   const sendCode = useCallback((textContent: string) => {
-    if (role !== 'candidate') return;
-
     // Update textContentRef synchronously — sendCursor reads this ref to
     // piggy-back the latest code onto every cursor publish.
     textContentRef.current = textContent;
@@ -297,11 +294,18 @@ export function useWebSocket({
       const client = clientRef.current;
       if (!client || !client.connected) return;
 
-      const payload: CandidateCodePayload = {
+      // Candidate payload includes live cursor position.
+      // Interviewer payload omits cursor (0,0 would corrupt candidate cursor display).
+      const payload: CandidateCodePayload = role === 'candidate' ? {
         textContent,
         idLanguage: idLanguageRef.current,
         cursorLine: cursorRef.current.line,
         cursorCh:   cursorRef.current.ch,
+      } : {
+        textContent,
+        idLanguage: idLanguageRef.current,
+        cursorLine: 0,
+        cursorCh:   0,
       };
 
       client.publish({

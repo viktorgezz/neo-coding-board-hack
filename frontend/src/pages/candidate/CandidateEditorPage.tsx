@@ -24,7 +24,7 @@ import { lazy, Suspense, memo, useState, useEffect, useRef, useCallback } from '
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import type { OnMount, OnChange } from '@monaco-editor/react';
 
-import { getCandidateToken } from '@/auth/candidateSession';
+import { getCandidateToken, getCandidateVacancy } from '@/auth/candidateSession';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCursorSocket } from '@/hooks/useCursorSocket';
 import LanguageSelector from '@/components/LanguageSelector';
@@ -45,6 +45,16 @@ const EDITOR_FALLBACK = <div className={styles.editorFallback} />;
 // Monaco editor type derived from @monaco-editor/react's OnMount signature —
 // avoids a direct 'monaco-editor' import while keeping full type safety.
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
+
+// Maps idLanguage values (sent via WebSocket) → Monaco language identifiers
+const MONACO_LANG: Record<string, string> = {
+  Python:     'python',
+  Java:       'java',
+  Kotlin:     'kotlin',
+  JavaScript: 'javascript',
+  'C++':      'cpp',
+  Bash:       'shell',
+};
 
 // ── Monaco options object defined outside the component ────────────────────
 // This object reference is stable — MonacoEditor will not re-apply options
@@ -99,8 +109,10 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
 
   // ── State ────────────────────────────────────────────────────────────────
 
-  const [nameVacancy, setNameVacancy] = useState('');
-  const [idLanguage,  setIdLanguage]  = useState('kotlin');
+  // Initialise from the session — set by the join page from the same join-info
+  // fetch, so no extra round-trip is needed and the name is instantly correct.
+  const [nameVacancy, setNameVacancy] = useState(getCandidateVacancy() ?? '');
+  const [idLanguage,  setIdLanguage]  = useState('Kotlin');
   const [initialCode, setInitialCode] = useState('');
   /**
    * Gates Monaco mount. Monaco only renders after both initial fetches resolve
@@ -123,7 +135,8 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
    * the component (and potentially remount Monaco) on every WS reconnect.
    */
   const editorRef = useRef<IStandaloneCodeEditor | null>(null);
-  const interviewerDecorationsRef = useRef<string[]>([]);
+  const interviewerDecorationsRef          = useRef<string[]>([]);
+  const interviewerSelectionDecorationsRef = useRef<string[]>([]);
 
   /**
    * Last textContent value — updated synchronously in onChange so sendCursor
@@ -159,28 +172,65 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
 
   useEffect(() => {
     const editor = editorRef.current;
-    if (!editor || !cursorFromInterviewer) return;
+    if (!editor) return;
+
+    // cursorFromInterviewer is null when the interviewer hides their cursor
+    // (sendCursorHide() was called) — clear all decorations immediately.
+    if (!cursorFromInterviewer) {
+      interviewerDecorationsRef.current = editor.deltaDecorations(
+        interviewerDecorationsRef.current, [],
+      );
+      interviewerSelectionDecorationsRef.current = editor.deltaDecorations(
+        interviewerSelectionDecorationsRef.current, [],
+      );
+      return;
+    }
 
     const model = editor.getModel();
     if (!model) return;
 
-    const line = Math.min(Math.max(cursorFromInterviewer.line, 1), model.getLineCount());
-    const maxColumn = model.getLineMaxColumn(line);
-    const column = Math.min(Math.max(cursorFromInterviewer.column, 1), maxColumn);
+    const clampLine = (l: number) => Math.min(Math.max(l, 1), model.getLineCount());
+    const clampCol  = (l: number, c: number) =>
+      Math.min(Math.max(c, 1), model.getLineMaxColumn(l));
 
-    interviewerDecorationsRef.current = editor.deltaDecorations(interviewerDecorationsRef.current, [
-      {
+    const line   = clampLine(cursorFromInterviewer.line);
+    const column = clampCol(line, cursorFromInterviewer.column);
+
+    // ── Cursor caret decoration ─────────────────────────────────────────
+    interviewerDecorationsRef.current = editor.deltaDecorations(
+      interviewerDecorationsRef.current,
+      [{
         range: {
-          startLineNumber: line,
-          startColumn: column,
-          endLineNumber: line,
-          endColumn: column,
+          startLineNumber: line, startColumn: column,
+          endLineNumber:   line, endColumn:   column,
         },
-        options: {
-          className: 'interviewer-cursor-decoration',
-        },
-      },
-    ]);
+        options: { className: 'interviewer-cursor-decoration' },
+      }],
+    );
+
+    // ── Selection range decoration ──────────────────────────────────────
+    const { selStartLine, selStartCol, selEndLine, selEndCol } = cursorFromInterviewer;
+    if (selStartLine != null && selEndLine != null) {
+      const sLine = clampLine(selStartLine);
+      const eLine = clampLine(selEndLine);
+      interviewerSelectionDecorationsRef.current = editor.deltaDecorations(
+        interviewerSelectionDecorationsRef.current,
+        [{
+          range: {
+            startLineNumber: sLine,
+            startColumn:     clampCol(sLine, selStartCol ?? 1),
+            endLineNumber:   eLine,
+            endColumn:       clampCol(eLine, selEndCol   ?? 1),
+          },
+          options: { inlineClassName: 'interviewer-selection-inline' },
+        }],
+      );
+    } else {
+      // No selection — clear any lingering selection highlight
+      interviewerSelectionDecorationsRef.current = editor.deltaDecorations(
+        interviewerSelectionDecorationsRef.current, [],
+      );
+    }
   }, [cursorFromInterviewer]);
 
   // ── Metric callbacks ──────────────────────────────────────────────────────
@@ -219,18 +269,9 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
 
   useEffect(() => {
     async function init() {
-      // 1. Vacancy name — display only, non-fatal if it fails
-      try {
-        const res = await fetch(`/api/v1/rooms/join-info/${idRoom}`);
-        if (res.ok) {
-          const data = await res.json() as { nameVacancy?: string };
-          setNameVacancy(data.nameVacancy ?? '');
-        }
-      } catch {
-        // Non-fatal — header will just show an empty vacancy name
-      }
+      // Vacancy name comes from candidateSession (set by join page) — no fetch needed.
 
-      // 2. Latest code snapshot — initialises editor defaultValue and language
+      // Latest code snapshot — initialises editor defaultValue and language
       try {
         const res = await fetch(`/api/v1/rooms/${idRoom}/code/latest`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -326,9 +367,16 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
   return (
     <div className={styles.candidateRoot}>
 
-      {/* ── Header: 48px bar — vacancy name, language picker, timer ── */}
+      {/* ── Header: 48px bar — logo, vacancy name, language picker, timer ── */}
       <header className={styles.editorHeader}>
-        <span className={styles.vacancyName}>{nameVacancy}</span>
+        <div className={styles.vacancyGroup}>
+          <img
+            src="/neoflex-logo.png"
+            alt="Neoflex"
+            className={styles.neoflexLogo}
+          />
+          <span className={styles.vacancyName}>{nameVacancy}</span>
+        </div>
         <LanguageSelector value={idLanguage} onChange={setIdLanguage} />
         <InterviewTimer startTime={startTimeRef.current} />
       </header>
@@ -343,7 +391,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
           <Suspense fallback={EDITOR_FALLBACK}>
             <MonacoEditor
               height="100%"
-              language={idLanguage}
+              language={MONACO_LANG[idLanguage] ?? idLanguage.toLowerCase()}
               defaultValue={initialCode}
               theme="vs-dark"
               options={MONACO_OPTIONS}

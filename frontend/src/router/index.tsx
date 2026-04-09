@@ -71,6 +71,16 @@ export const router = createBrowserRouter([
     element: wrap(<LoginPage />),
   },
 
+  // InterviewerRoomPage — authenticated but no sidebar layout (full-width live panel)
+  {
+    path: '/interviewer/sessions/:id',
+    element: (
+      <InterviewerRoute>
+        {wrap(<InterviewerRoomPage />)}
+      </InterviewerRoute>
+    ),
+  },
+
   // Candidate flow — zero auth, no layout, no token check whatsoever
   {
     path: '/session/:id/join',
@@ -104,14 +114,6 @@ export const router = createBrowserRouter([
         element: (
           <InterviewerRoute>
             {wrap(<CreateInterviewPage />)}
-          </InterviewerRoute>
-        ),
-      },
-      {
-        path: '/interviewer/sessions/:id',
-        element: (
-          <InterviewerRoute>
-            {wrap(<InterviewerRoomPage />)}
           </InterviewerRoute>
         ),
       },
