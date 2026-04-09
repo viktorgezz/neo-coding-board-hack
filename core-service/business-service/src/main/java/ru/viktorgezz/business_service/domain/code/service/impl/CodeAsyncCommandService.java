@@ -1,22 +1,12 @@
 package ru.viktorgezz.business_service.domain.code.service.impl;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.stream.Collectors;
-
+import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import jakarta.persistence.EntityManager;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import ru.viktorgezz.business_service.domain.candidate.Candidate;
 import ru.viktorgezz.business_service.domain.code.CodeSnapshot;
 import ru.viktorgezz.business_service.domain.code.dto.CodeSnapshotWsRequest;
@@ -25,6 +15,11 @@ import ru.viktorgezz.business_service.domain.room.Room;
 import ru.viktorgezz.business_service.domain.room.repo.RoomRepo;
 import ru.viktorgezz.business_service.domain.room.util.TimeOffsetUtils;
 import ru.viktorgezz.business_service.domain.user.User;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -54,15 +49,15 @@ public class CodeAsyncCommandService {
             batch.add(pair);
         }
 
-        // Загружаем dateStart для всех уникальных комнат одним запросом
-        final Map<UUID, Instant> roomDateStartMap = batch.stream()
+        Set<UUID> roomIds = batch.stream()
                 .map(p -> p.getFirst().getIdRoom())
-                .distinct()
+                .collect(Collectors.toSet());
+
+        Map<UUID, Instant> roomDateStartMap = roomRepo.findAllById(roomIds).stream()
+                .filter(room -> room.getDateStart() != null)
                 .collect(Collectors.toMap(
-                        roomId -> roomId,
-                        roomId -> roomRepo.findById(roomId)
-                                .map(Room::getDateStart)
-                                .orElse(null)
+                        Room::getId,
+                        Room::getDateStart
                 ));
 
         List<CodeSnapshot> batchToSave = new ArrayList<>();

@@ -38,4 +38,12 @@ public interface RoomQueryService {
      * @return информация о комнате
      */
     JoinInfoResponse getJoinInfo(UUID idRoom);
+
+    /**
+     * Получает сводную информацию об одной комнате.
+     *
+     * @param idRoom идентификатор комнаты
+     * @return сводная информация о комнате
+     */
+    RoomSummaryResponse getRoomSummary(UUID idRoom);
 }

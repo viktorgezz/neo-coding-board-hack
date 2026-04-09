@@ -27,3 +27,9 @@ logging:
   level:
     ru.viktorgezz.business_service: DEBUG
     ru.viktorgezz.security: DEBUG
+
+app:
+  integration:
+    history:
+      base-url: ${HISTORY_SERVICE_URL:http://analytics-service:8000}
+      endpoint: "/api/v1/rooms/{idRoom}/history"

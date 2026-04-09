@@ -66,4 +66,11 @@ public class RoomQueryServiceImpl implements RoomQueryService {
                 room.getTitleRoom()
         );
     }
+
+    @Override
+    public RoomSummaryResponse getRoomSummary(UUID idRoom) {
+        final Room room = roomRepo.findById(idRoom)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND, idRoom));
+        return RoomMapper.toSummary(room);
+    }
 }
