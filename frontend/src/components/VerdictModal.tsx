@@ -7,8 +7,9 @@
  *
  * Step 2: Read-only score summary + binary verdict selector (ПРОЙДЕНО /
  *         НЕ ПРОЙДЕНО). Confirm fires two sequential API calls:
- *           A) POST /rooms/{idRoom}/interviewer-assessment (optional — 404/405 skips)
- *           B) PATCH /rooms/finish/{idRoom}
+ *           A) POST analytics …/interviewer-assessment (404/405 — сервис отключён)
+ *           B) PATCH core …/finish/{idRoom}
+ *           C) POST analytics …/history (снимки + заметки из core, best-effort)
  *
  * Unmount pattern: returns null when isOpen is false, resetting all local
  * state automatically when the modal reopens.
@@ -21,6 +22,8 @@
 
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { analyticsApiUrl } from '@/api/analyticsClient';
+import { pushSessionHistoryToAnalytics } from '@/api/analyticsSessionHistory';
 import StarRating from './StarRating';
 import StepIndicator from './StepIndicator';
 import styles from './VerdictModal.module.css';
@@ -142,17 +145,20 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
 
     // ── Step A: POST assessment (some deployments omit this route) ─────────
     try {
-      const assessRes = await fetch(`/api/v1/rooms/${idRoom}/interviewer-assessment`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          systemDesign:        scores.systemDesign,
-          codeReadability:     scores.codeReadability,
-          communicationSkills: scores.communicationSkills,
-          coachability:        scores.coachability,
-          verdict,
-        } satisfies AssessmentBody),
-      });
+      const assessRes = await fetch(
+        analyticsApiUrl(`/api/v1/rooms/${idRoom}/interviewer-assessment`),
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            systemDesign:        scores.systemDesign,
+            codeReadability:     scores.codeReadability,
+            communicationSkills: scores.communicationSkills,
+            coachability:        scores.coachability,
+            verdict,
+          } satisfies AssessmentBody),
+        },
+      );
       const absent = assessRes.status === 404 || assessRes.status === 405;
       if (!assessRes.ok && !absent) {
         throw new Error(`Assessment failed (${assessRes.status})`);
@@ -182,8 +188,9 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
         throw new Error(`Finish failed (${finishRes.status})`);
       }
 
-      // Both succeeded — component will unmount via parent navigation;
-      // no need to setIsSubmitting(false) before calling onSuccess.
+      await pushSessionHistoryToAnalytics(idRoom, token);
+
+      // Component will unmount via parent navigation.
       onSuccess();
     } catch (err) {
       setError(

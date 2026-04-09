@@ -9,12 +9,10 @@
  *   3. Polling (5s): watches for session FINISHED → silently navigates to /done.
  *
  * Architecture note — two-component split:
- *   CandidateEditorPage (outer)  — reads candidate token synchronously.
- *     If null, returns <Navigate> BEFORE any hooks run in the inner component.
- *     This avoids a conditional hook call while keeping the token check
- *     before any fetches, as required by the spec.
+ *   CandidateEditorPage (outer) — useParams, restore из sessionStorage (F5), getCandidateToken.
+ *     Без токена — <Navigate> на join этой комнаты. Только лёгкие хуки, без фетчей.
  *
- *   CandidateEditorContent (inner) — all hooks. token is guaranteed string.
+ *   CandidateEditorContent (inner) — все остальные хуки; token гарантированно string.
  *
  * Zero imports from useAuth or AuthContext — candidate token comes exclusively
  * from getCandidateToken() in the candidateSession module.
@@ -24,7 +22,12 @@ import { lazy, Suspense, memo, useState, useEffect, useRef, useCallback } from '
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 
-import { getCandidateToken, getCandidateVacancy } from '@/auth/candidateSession';
+import { analyticsApiUrl } from '@/api/analyticsClient';
+import {
+  getCandidateToken,
+  getCandidateVacancy,
+  restoreCandidateSessionFromStorage,
+} from '@/auth/candidateSession';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCursorSocket, type CursorSelectionData } from '@/hooks/useCursorSocket';
 import { useRoomCodeSync } from '@/hooks/useRoomCodeSync';
@@ -90,15 +93,16 @@ const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
 // ---------------------------------------------------------------------------
 
 /**
- * Reads the candidate session token BEFORE any hooks run in the inner
- * component. If null (session module was never populated — direct URL
- * navigation or page refresh), redirect immediately to root.
+ * Восстанавливает токен из sessionStorage при F5 (та же комната в URL),
+ * затем читает модульную сессию. Если токена нет — на страницу входа в комнату.
  */
 export default function CandidateEditorPage() {
-  const token = getCandidateToken(); // plain module read, NOT a hook
+  const { id: idRoom = '' } = useParams<{ id: string }>();
+  restoreCandidateSessionFromStorage(idRoom);
+  const token = getCandidateToken();
 
   if (!token) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={idRoom ? `/session/${idRoom}/join` : '/'} replace />;
   }
 
   return <CandidateEditorContent token={token} />;
@@ -269,7 +273,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
     }, 500);
 
     // Fire-and-forget — error is silently swallowed, zero UI for metric failure
-    fetch(`/api/v1/rooms/${idRoom}/metrics/increment-paste`, {
+    fetch(analyticsApiUrl(`/api/v1/rooms/${idRoom}/metrics/increment-paste`), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     }).catch(() => {});
@@ -279,7 +283,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
     // Only POST when the tab becomes hidden (candidate switched away)
     // document.hidden is false on return — no POST fires for tab-back
     if (document.hidden) {
-      fetch(`/api/v1/rooms/${idRoom}/metrics/increment-tab-switch`, {
+      fetch(analyticsApiUrl(`/api/v1/rooms/${idRoom}/metrics/increment-tab-switch`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});

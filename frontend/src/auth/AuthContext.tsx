@@ -21,22 +21,20 @@ import {
 import type { AuthRole } from '@/constants/roles';
 import { decodeJWT, isTokenExpired } from './jwt';
 import { apiLogin } from './api';
+import {
+  persistStaffSession,
+  clearStaffSessionStorage,
+  readStaffSessionFromStorage,
+} from './staffSessionStorage';
 
 // ---------------------------------------------------------------------------
 // Module-level token refs
 // ---------------------------------------------------------------------------
 
 /**
- * Intentionally not persisted. Page refresh = re-login. Security requirement.
- *
- * These variables live outside React state so they:
- *   (a) survive AuthProvider re-mounts without resetting (e.g. React StrictMode
- *       double-invoke in development, or parent tree reconstructions), and
- *   (b) are accessible synchronously from the axios interceptor layer without
- *       going through a hook or context read.
- *
- * They are NEVER written to localStorage, sessionStorage, or any cookie.
- * The only way to populate them is a successful login() call.
+ * Module-level refs for axios and sync access. Синхронизируются с localStorage:
+ * после login() и при старте приложения (восстановление после F5).
+ * Сбрасываются только при logout() или истечении токена.
  */
 let _tokenAccess: string | null = null;
 let _tokenRefresh: string | null = null;
@@ -107,6 +105,29 @@ const UNAUTHENTICATED: AuthSessionState = {
   isAuthenticated: false,
 };
 
+function hydrateStateFromStorage(): AuthSessionState {
+  const stored = readStaffSessionFromStorage();
+  if (!stored) return UNAUTHENTICATED;
+
+  const payload = decodeJWT(stored.tokenAccess);
+  if (!payload || isTokenExpired(payload)) {
+    clearStaffSessionStorage();
+    return UNAUTHENTICATED;
+  }
+
+  _tokenAccess = stored.tokenAccess;
+  _tokenRefresh = stored.tokenRefresh;
+  _userName = stored.name || null;
+
+  return {
+    token:           stored.tokenAccess,
+    role:            payload.role,
+    name:            stored.name || null,
+    userId:          payload.sub,
+    isAuthenticated: true,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // AuthProvider
 // ---------------------------------------------------------------------------
@@ -116,23 +137,19 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [state, setState] = useState<AuthSessionState>(UNAUTHENTICATED);
+  const [state, setState] = useState<AuthSessionState>(() => hydrateStateFromStorage());
 
-  // ── Init check ────────────────────────────────────────────────────────────
-  //
-  // Runs once on mount (or re-mount). If the module refs still hold values
-  // from before this provider instance existed (e.g. React StrictMode
-  // double-invoke in development, or parent tree reconstructions), validate
-  // the token and hydrate state rather than resetting to unauthenticated.
+  // StrictMode / редкий ре-моунт: если ref уже есть, а state потерялся — подтянуть.
   useEffect(() => {
+    if (state.isAuthenticated) return;
     if (_tokenAccess === null) return;
 
     const payload = decodeJWT(_tokenAccess);
     if (!payload || isTokenExpired(payload)) {
-      // Silently clear stale/expired refs — no throw, no network call
       _tokenAccess = null;
       _tokenRefresh = null;
       _userName = null;
+      clearStaffSessionStorage();
       return;
     }
 
@@ -143,7 +160,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       userId: payload.sub,
       isAuthenticated: true,
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.isAuthenticated]);
 
   // ── login ─────────────────────────────────────────────────────────────────
 
@@ -170,6 +187,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isAuthenticated: true,
     });
 
+    persistStaffSession(tokenAccess, tokenRefresh, name);
+
     // Return the role so callers can navigate without calling useAuth() again
     // inside an async callback (which would violate the Rules of Hooks).
     return payload.role;
@@ -181,8 +200,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     _tokenAccess = null;
     _tokenRefresh = null;
     _userName = null;
+    clearStaffSessionStorage();
     setState(UNAUTHENTICATED);
-    // Synchronous. Caller (LoginPage or router guard) handles navigate('/login').
   }, []);
 
   // ── Context value — memoized to prevent needless consumer re-renders ──────

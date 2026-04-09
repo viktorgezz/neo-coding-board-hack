@@ -7,6 +7,26 @@
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
+.loadBanner {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: rgba(96, 96, 160, 0.15);
+  border: 1px solid rgba(96, 96, 160, 0.35);
+  color: #a0a0d0;
+  font-size: 13px;
+}
+
+.errorBanner {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: rgba(160, 50, 50, 0.12);
+  border: 1px solid rgba(160, 80, 80, 0.4);
+  color: #e8a0a0;
+  font-size: 13px;
+}
+
 /* ── Header ───────────────────────────────────────────────────────────── */
 
 .header {

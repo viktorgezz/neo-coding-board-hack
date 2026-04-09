@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useAuth } from '@/auth/useAuth';
+import BackLink from '@/components/BackLink';
+import { ROLES } from '@/constants/roles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import styles from './TaskBankManagePage.module.css';
@@ -314,6 +317,10 @@ function TaskRow({ task, categories }: { task: Task; categories: Category[] }) {
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function TaskBankManagePage() {
+  const { role } = useAuth();
+  const taskBankBackTo = role === ROLES.ADMIN ? '/admin/users' : '/hr/candidates';
+  const taskBankBackLabel = role === ROLES.ADMIN ? 'К пользователям' : 'К кандидатам';
+
   // ── Category form state
   const [catName, setCatName]   = useState('');
   const [catDesc, setCatDesc]   = useState('');
@@ -362,6 +369,7 @@ export default function TaskBankManagePage() {
 
   return (
     <div className={styles.page}>
+      <BackLink to={taskBankBackTo}>{taskBankBackLabel}</BackLink>
       <h1 className={styles.pageTitle}>Банк задач</h1>
 
       <div className={styles.columns}>

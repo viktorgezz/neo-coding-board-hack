@@ -10,12 +10,8 @@
  *   - Auth checks live in guard components, not loader functions
  *   - AppLayout wraps all authenticated routes as a nested layout route
  *
- * ⚠️  Token persistence note:
- *   tokenAccess lives in module-level variables in AuthContext.tsx with NO
- *   persistence layer. It survives React re-renders (same JS heap) but NOT
- *   hard page refreshes (F5 / address-bar Enter). After a refresh the store
- *   resets to null and the user is sent to /login. This is intentional —
- *   see AuthContext.tsx.
+ * Staff JWT хранится в localStorage (см. staffSessionStorage.ts) до Logout
+ * или истечения access-токена; после F5 сессия восстанавливается.
  */
 
 import { lazy, Suspense, type ReactNode } from 'react';

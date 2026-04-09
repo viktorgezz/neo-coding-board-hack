@@ -18,6 +18,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { setCandidateSession } from '@/auth/candidateSession';
+import BackLink from '@/components/BackLink';
 import styles from './CandidateJoinPage.module.css';
 
 // ---------------------------------------------------------------------------
@@ -172,6 +173,7 @@ export default function CandidateJoinPage() {
 
   return (
     <main className={styles.joinRoot}>
+      <BackLink to="/">На главную</BackLink>
       <div className={styles.joinCard}>
 
         {vacancyError !== null ? (

@@ -1,5 +1,14 @@
-import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
+import { useParams, useLocation } from 'react-router-dom';
+import { useAuth } from '@/auth/useAuth';
+import { analyticsApiUrl } from '@/api/analyticsClient';
+import {
+  normalizeCandidateReport,
+  normalizeAiSummary,
+  type CandidateReportPayload,
+  type AISummaryPayload,
+  type EventType,
+} from '@/api/candidateReportApi';
 import {
   CartesianGrid,
   Legend,
@@ -18,112 +27,28 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import BackLink from '@/components/BackLink';
 import styles from './ReportPage.module.css';
 
-type EventType = 'NOTE' | 'PASTE' | 'TAB_SWITCH';
-
-interface TimelineEvent {
-  timestamp: string;
-  type: EventType;
-  label: string;
-}
-
-interface ComplexityPoint {
-  timestamp: string;
-  complexity: number;
-}
-
-interface DistributionPoint {
-  x: number;
-  y: number;
-}
-
-interface CandidateReportPayload {
-  summary: {
-    candidateName: string;
-    finalVerdict: 'PASSED' | 'FAILED';
-  };
-  timelineEvents: TimelineEvent[];
-  complexityTrend: ComplexityPoint[];
+const EMPTY_REPORT: CandidateReportPayload = {
+  summary:         { candidateName: '—', finalVerdict: 'PASSED' },
+  timelineEvents:  [],
+  complexityTrend: [{ timestamp: '00:00', complexity: 0 }],
   radarMetrics: {
-    systemDesign: number;
-    codeReadability: number;
-    communication: number;
-    coachability: number;
-    technicalScore: number;
-    integrity: number;
-  };
-  comparative: {
-    candidateZScore: number;
-    percentile: number;
-    distributionCurve: DistributionPoint[];
-  };
-}
-
-interface AISummaryPayload {
-  positivePoints: string[];
-  negativePoints: string[];
-  aiRecommendation: string;
-}
-
-const MOCK_REPORT: CandidateReportPayload = {
-  summary: {
-    candidateName: 'Елена',
-    finalVerdict: 'PASSED',
-  },
-  timelineEvents: [
-    { timestamp: '2026-04-08T14:01:00+03:00', type: 'NOTE', label: 'Сформулировал задачу: порядок курсов с зависимостями.' },
-    { timestamp: '2026-04-08T14:06:00+03:00', type: 'NOTE', label: 'Уточнил: граф ориентированный, нужен один топологический порядок.' },
-    { timestamp: '2026-04-08T14:14:00+03:00', type: 'NOTE', label: 'Предложил Kahn вместо DFS, обсудили плюсы.' },
-    { timestamp: '2026-04-08T14:28:00+03:00', type: 'NOTE', label: 'Исправил направление ребра после подсказки.' },
-    { timestamp: '2026-04-08T14:44:00+03:00', type: 'NOTE', label: 'Оценка сложности O(V+E) — верно.' },
-    { timestamp: '2026-04-08T15:31:00+03:00', type: 'NOTE', label: 'Добавил демо-assert для примера из условия.' },
-    { timestamp: '2026-04-08T15:48:00+03:00', type: 'NOTE', label: 'Итог: решение принято, обсудили альтернативу DFS.' },
-    { timestamp: '2026-04-08T17:25:00+03:00', type: 'PASTE', label: 'Вставка из буфера' },
-    { timestamp: '2026-04-08T17:40:00+03:00', type: 'TAB_SWITCH', label: 'Смена фокуса вкладки' },
-    { timestamp: '2026-04-08T17:55:00+03:00', type: 'PASTE', label: 'Вставка из буфера' },
-  ],
-  complexityTrend: [
-    { timestamp: '14:00', complexity: 0 },
-    { timestamp: '14:10', complexity: 0 },
-    { timestamp: '14:17', complexity: 12 },
-    { timestamp: '14:21', complexity: 0 },
-    { timestamp: '14:31', complexity: 27 },
-    { timestamp: '14:40', complexity: 31 },
-    { timestamp: '14:57', complexity: 40 },
-    { timestamp: '15:06', complexity: 45 },
-    { timestamp: '15:12', complexity: 50 },
-    { timestamp: '15:16', complexity: 54 },
-    { timestamp: '15:23', complexity: 59 },
-    { timestamp: '15:33', complexity: 71 },
-    { timestamp: '15:44', complexity: 83 },
-    { timestamp: '15:48', complexity: 85 },
-    { timestamp: '15:55', complexity: 98 },
-    { timestamp: '15:59', complexity: 100 },
-    { timestamp: '16:10', complexity: 100 },
-  ],
-  radarMetrics: {
-    systemDesign: 4,
-    codeReadability: 5,
-    communication: 4,
-    coachability: 4,
-    technicalScore: 5,
-    integrity: 4,
+    systemDesign: 0, codeReadability: 0, communication: 0, coachability: 0,
+    technicalScore: 0, integrity: 0,
   },
   comparative: {
-    candidateZScore: 1.56,
-    percentile: 100,
-    distributionCurve: [
-      { x: -3.5, y: 0.002194 }, { x: -3.2, y: 0.005952 }, { x: -2.9, y: 0.014779 },
-      { x: -2.6, y: 0.033579 }, { x: -2.3, y: 0.06982 }, { x: -2.0, y: 0.132847 },
-      { x: -1.7, y: 0.231307 }, { x: -1.4, y: 0.368546 }, { x: -1.1, y: 0.537355 },
-      { x: -0.8, y: 0.716964 }, { x: -0.5, y: 0.875385 }, { x: -0.2, y: 0.978062 },
-      { x: 0, y: 1 }, { x: 0.2, y: 0.978062 }, { x: 0.5, y: 0.875385 }, { x: 0.8, y: 0.716964 },
-      { x: 1.1, y: 0.537355 }, { x: 1.4, y: 0.368546 }, { x: 1.7, y: 0.231307 },
-      { x: 2.0, y: 0.132847 }, { x: 2.3, y: 0.06982 }, { x: 2.6, y: 0.033579 },
-      { x: 2.9, y: 0.014779 }, { x: 3.2, y: 0.005952 }, { x: 3.5, y: 0.002194 },
-    ],
+    candidateZScore: 0,
+    percentile:      0,
+    distributionCurve: [{ x: 0, y: 1 }],
   },
+};
+
+const EMPTY_AI: AISummaryPayload = {
+  positivePoints:   [],
+  negativePoints:   [],
+  aiRecommendation: '',
 };
 
 const EVENT_COLOR: Record<EventType, string> = { NOTE: '#7B9EA6', PASTE: '#A05050', TAB_SWITCH: '#A08030' };
@@ -131,21 +56,6 @@ const EVENT_LABEL: Record<EventType, string> = {
   NOTE: 'Заметка',
   PASTE: 'Вставка',
   TAB_SWITCH: 'Смена вкладки',
-};
-
-const MOCK_AI_SUMMARY: AISummaryPayload = {
-  positivePoints: [
-    'Кандидат уверенно разобрался с задачей топологической сортировки графа.',
-    'Общался эффективно, задавал правильные вопросы и демонстрировал понимание сложности решения.',
-    'Легко воспринял обратную связь от интервьюера и оперативно исправлял ошибки.',
-    'Аккуратно подходил к деталям реализации, например, проверяя наличие пустого prerequisites.',
-  ],
-  negativePoints: [
-    'Наблюдались небольшие задержки и паузы при выполнении задачи, хотя они были незначительными.',
-    'Произошли две вставки из буфера обмена после завершения основного решения, уже после финального вердикта.',
-  ],
-  aiRecommendation:
-    '@{candidateName} продемонстрировал хорошее владение алгоритмом топологической сортировки и уверенное знание структуры данных и алгоритмической сложности. Несмотря на некоторые паузы и поздние вставки, его общее техническое мастерство и коммуникация свидетельствуют о потенциале успешного выполнения задач в нашей команде.',
 };
 
 function minutesSince(startMs: number, isoTs: string): number {
@@ -174,7 +84,17 @@ function getComplexityPattern(values: number[]): string {
   return 'Стабильная сложность';
 }
 
-function interpolateDistributionY(curve: DistributionPoint[], x: number): number {
+function reportListPath(pathname: string): string {
+  if (pathname.startsWith('/interviewer/')) return '/interviewer/sessions';
+  if (pathname.startsWith('/hr/')) return '/hr/candidates';
+  if (pathname.startsWith('/admin/')) return '/admin/users';
+  return '/';
+}
+
+function interpolateDistributionY(
+  curve: { x: number; y: number }[],
+  x: number,
+): number {
   if (curve.length === 0) return 0;
   if (x <= curve[0].x) return curve[0].y;
   if (x >= curve[curve.length - 1].x) return curve[curve.length - 1].y;
@@ -191,14 +111,85 @@ function interpolateDistributionY(curve: DistributionPoint[], x: number): number
 
 
 export default function ReportPage() {
-  const { id } = useParams<{ id: string }>();
-  const report = MOCK_REPORT;
-  const aiSummary = MOCK_AI_SUMMARY;
+  const { id: idRoom = '' } = useParams<{ id: string }>();
+  const { pathname } = useLocation();
+  const { token } = useAuth();
+  const backTo = reportListPath(pathname);
+  const backLabel =
+    backTo === '/interviewer/sessions'
+      ? 'К списку сессий'
+      : backTo === '/hr/candidates'
+        ? 'К кандидатам'
+        : backTo === '/admin/users'
+          ? 'К пользователям'
+          : 'На главную';
 
-  const timelineStartMs = useMemo(
-    () => Math.min(...report.timelineEvents.map((e) => new Date(e.timestamp).getTime())),
-    [report.timelineEvents],
-  );
+  const [report, setReport]       = useState<CandidateReportPayload>(EMPTY_REPORT);
+  const [aiSummary, setAiSummary] = useState<AISummaryPayload>(EMPTY_AI);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token || !idRoom) {
+      setIsLoading(false);
+      setLoadError('Нет токена или идентификатора комнаты.');
+      return;
+    }
+
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+
+    void (async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const [repRes, aiRes] = await Promise.all([
+          fetch(analyticsApiUrl(`/api/v1/rooms/${idRoom}/candidate-report`), { headers }),
+          fetch(analyticsApiUrl(`/api/v1/rooms/${idRoom}/ai-summary`), { headers }),
+        ]);
+
+        if (cancelled) return;
+
+        if (repRes.ok) {
+          const raw: unknown = await repRes.json();
+          const norm = normalizeCandidateReport(raw);
+          if (norm) setReport(norm);
+          else {
+            setReport(EMPTY_REPORT);
+            setLoadError('Сервис аналитики вернул отчёт в неожиданном формате.');
+          }
+        } else {
+          setReport(EMPTY_REPORT);
+          setLoadError(`Не удалось загрузить отчёт (${repRes.status}).`);
+        }
+
+        if (aiRes.ok) {
+          const rawAi: unknown = await aiRes.json();
+          if (!cancelled) setAiSummary(normalizeAiSummary(rawAi));
+        } else if (!cancelled) {
+          setAiSummary(EMPTY_AI);
+        }
+      } catch {
+        if (!cancelled) {
+          setReport(EMPTY_REPORT);
+          setLoadError('Ошибка сети при обращении к сервису аналитики.');
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, idRoom]);
+
+  const timelineStartMs = useMemo(() => {
+    if (report.timelineEvents.length === 0) return Date.now();
+    return Math.min(
+      ...report.timelineEvents.map((e) => new Date(e.timestamp).getTime()),
+    );
+  }, [report.timelineEvents]);
 
   const timelineChartData = useMemo(() => {
     return report.timelineEvents.map((event) => ({
@@ -210,8 +201,18 @@ export default function ReportPage() {
   }, [report.timelineEvents, timelineStartMs]);
 
   const complexityData = useMemo(() => {
-    const base = hhmmToMinutes(report.complexityTrend[0]?.timestamp ?? '00:00');
-    return report.complexityTrend.map((p) => ({
+    const trend = report.complexityTrend;
+    if (trend.length === 0) return [];
+    const first = trend[0].timestamp;
+    if (first.includes('T')) {
+      const baseMs = new Date(first).getTime();
+      return trend.map((p) => ({
+        ...p,
+        xMin: (new Date(p.timestamp).getTime() - baseMs) / 60000,
+      }));
+    }
+    const base = hhmmToMinutes(first);
+    return trend.map((p) => ({
       ...p,
       xMin: hhmmToMinutes(p.timestamp) - base,
     }));
@@ -241,8 +242,10 @@ export default function ReportPage() {
   }, [report.timelineEvents]);
 
   const interviewDurationMin = useMemo(() => {
-    const minTs = Math.min(...report.timelineEvents.map((e) => new Date(e.timestamp).getTime()));
-    const maxTs = Math.max(...report.timelineEvents.map((e) => new Date(e.timestamp).getTime()));
+    if (report.timelineEvents.length === 0) return 0;
+    const times = report.timelineEvents.map((e) => new Date(e.timestamp).getTime());
+    const minTs = Math.min(...times);
+    const maxTs = Math.max(...times);
     return (maxTs - minTs) / 60000;
   }, [report.timelineEvents]);
 
@@ -272,16 +275,32 @@ export default function ReportPage() {
     return <circle cx={cx} cy={cy} r={5} fill={EVENT_COLOR[type]} />;
   };
 
+  const verdictClass =
+    report.summary.finalVerdict === 'FAILED' ? styles.verdictFailed : styles.verdictPassed;
+
   return (
     <div className={styles.reportRoot}>
+      <BackLink to={backTo}>{backLabel}</BackLink>
+
+      {isLoading && (
+        <div className={styles.loadBanner} role="status">
+          Загрузка отчёта…
+        </div>
+      )}
+      {loadError && !isLoading && (
+        <div className={styles.errorBanner} role="alert">
+          {loadError}
+        </div>
+      )}
+
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Отчет кандидата: {report.summary.candidateName}</h1>
           <p className={styles.subtitle}>
-            Комната: {id} · интерактивный аналитический отчет
+            Комната: {idRoom} · интерактивный аналитический отчет
           </p>
         </div>
-        <span className={`${styles.verdict} ${styles.verdictPassed}`}>
+        <span className={`${styles.verdict} ${verdictClass}`}>
           {report.summary.finalVerdict}
         </span>
       </div>
@@ -313,16 +332,16 @@ export default function ReportPage() {
           <div className={styles.aiPositive}>
             <h4 className={styles.aiTitle}>Сильные стороны</h4>
             <ul className={styles.aiList}>
-              {aiSummary.positivePoints.map((point) => (
-                <li key={point}>{point}</li>
+              {aiSummary.positivePoints.map((point, i) => (
+                <li key={`p-${i}`}>{point}</li>
               ))}
             </ul>
           </div>
           <div className={styles.aiNegative}>
             <h4 className={styles.aiTitle}>Зоны риска</h4>
             <ul className={styles.aiList}>
-              {aiSummary.negativePoints.map((point) => (
-                <li key={point}>{point}</li>
+              {aiSummary.negativePoints.map((point, i) => (
+                <li key={`n-${i}`}>{point}</li>
               ))}
             </ul>
           </div>

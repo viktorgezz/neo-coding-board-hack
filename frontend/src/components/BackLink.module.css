@@ -1,0 +1,14 @@
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #9090c0;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.backLink:hover {
+  color: #c0c0e8;
+  text-decoration: underline;
+}

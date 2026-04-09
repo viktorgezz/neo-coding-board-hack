@@ -20,3 +20,9 @@
   border: 1px solid var(--text-muted);
   color: var(--text-muted);
 }
+
+/* SUPERUSER */
+.badgeSuperuser {
+  border: 1px solid #c4a35a;
+  color: #e8c96a;
+}

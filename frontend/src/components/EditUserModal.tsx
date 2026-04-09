@@ -7,7 +7,7 @@ interface UpdateUserResponse {
   id: string;
   name: string;
   email: string;
-  role: 'HR' | 'INTERVIEWER';
+  role: 'HR' | 'INTERVIEWER' | 'SUPERUSER';
   createdAt: string;
 }
 
@@ -44,15 +44,22 @@ interface ContentProps {
   onSuccess: (updatedUser: AdminUser) => void;
 }
 
+function isEditableStaffRole(r: AdminUser['role']): r is 'HR' | 'INTERVIEWER' {
+  return r === 'HR' || r === 'INTERVIEWER';
+}
+
 function EditUserModalContent({
   token,
   user,
   onClose,
   onSuccess,
 }: ContentProps) {
+  const isSuperuserAccount = user.role === 'SUPERUSER';
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
-  const [role, setRole] = useState<'HR' | 'INTERVIEWER'>(user.role);
+  const [role, setRole] = useState<'HR' | 'INTERVIEWER'>(() =>
+    isEditableStaffRole(user.role) ? user.role : 'INTERVIEWER',
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,17 +70,20 @@ function EditUserModalContent({
     setIsSubmitting(true);
     setError(null);
     try {
+      const body: Record<string, string> = {
+        name: name.trim(),
+        email: email.trim(),
+      };
+      if (!isSuperuserAccount) {
+        body.role = role;
+      }
       const res = await fetch(`/api/v1/admin/users/${user.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          role,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         setError(`Ошибка сохранения (${res.status})`);
@@ -93,7 +103,7 @@ function EditUserModalContent({
     } finally {
       setIsSubmitting(false);
     }
-  }, [canSubmit, email, name, onClose, onSuccess, role, token, user.id]);
+  }, [canSubmit, email, isSuperuserAccount, name, onClose, onSuccess, role, token, user.id]);
 
   const modal = (
     <div className={styles.modalOverlay}>
@@ -116,14 +126,20 @@ function EditUserModalContent({
           </div>
           <div className={styles.fieldGroup}>
             <label className={styles.label}>Роль</label>
-            <div className={styles.roleSelect}>
-              <button type="button" className={styles.roleBtn} data-active={role === 'INTERVIEWER'} onClick={() => setRole('INTERVIEWER')}>
-                Interviewer
-              </button>
-              <button type="button" className={styles.roleBtn} data-active={role === 'HR'} onClick={() => setRole('HR')}>
-                HR
-              </button>
-            </div>
+            {isSuperuserAccount ? (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted, #9090c0)' }}>
+                Суперпользователь — роль не меняется через эту форму.
+              </p>
+            ) : (
+              <div className={styles.roleSelect}>
+                <button type="button" className={styles.roleBtn} data-active={role === 'INTERVIEWER'} onClick={() => setRole('INTERVIEWER')}>
+                  Interviewer
+                </button>
+                <button type="button" className={styles.roleBtn} data-active={role === 'HR'} onClick={() => setRole('HR')}>
+                  HR
+                </button>
+              </div>
+            )}
           </div>
           {error && <p className={styles.formError}>{error}</p>}
           <div className={styles.modalActions}>

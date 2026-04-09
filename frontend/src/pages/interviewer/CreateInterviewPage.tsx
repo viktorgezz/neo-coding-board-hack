@@ -16,6 +16,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
+import BackLink from '@/components/BackLink';
 import styles from './CreateInterviewPage.module.css';
 
 // ---------------------------------------------------------------------------
@@ -163,12 +164,22 @@ export default function CreateInterviewPage() {
     navigate(`/interviewer/sessions/${successState.idRoom}`);
   }
 
+  function handleCreateAnotherInterview() {
+    setPhase('form');
+    setSuccessState(null);
+    setTitleRoom('');
+    setNameVacancy('');
+    setError(null);
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   const fieldGroupStyle = { opacity: phase === 'success' ? 0.5 : 1 };
 
   return (
     <div className={styles.createPage}>
+
+      <BackLink to="/interviewer/sessions">К списку сессий</BackLink>
 
       {/* ── Header ── */}
       <div className={styles.pageHeader}>
@@ -269,6 +280,14 @@ export default function CreateInterviewPage() {
             onClick={handleStartInterview}
           >
             Начать интервью →
+          </button>
+
+          <button
+            type="button"
+            className={styles.anotherInterviewBtn}
+            onClick={handleCreateAnotherInterview}
+          >
+            ← Создать другое интервью
           </button>
         </div>
       )}

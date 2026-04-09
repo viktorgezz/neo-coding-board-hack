@@ -12,14 +12,19 @@ import { memo } from 'react';
 import styles from './RoleBadge.module.css';
 
 export interface RoleBadgeProps {
-  role: 'HR' | 'INTERVIEWER';
+  role: 'HR' | 'INTERVIEWER' | 'SUPERUSER';
 }
 
 const RoleBadge = memo(function RoleBadge({ role }: RoleBadgeProps) {
-  const cls = role === 'HR' ? styles.badgeHR : styles.badgeInterviewer;
+  const cls =
+    role === 'HR' ? styles.badgeHR
+    : role === 'SUPERUSER' ? styles.badgeSuperuser
+    : styles.badgeInterviewer;
+  const label =
+    role === 'SUPERUSER' ? 'АДМИН' : role;
   return (
     <span className={`${styles.roleBadge} ${cls}`}>
-      {role}
+      {label}
     </span>
   );
 });

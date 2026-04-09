@@ -29,7 +29,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import CandidateRow from '@/components/CandidateRow';
 import type { HRRoomSummary } from '@/components/CandidateRow';
-import StatusTabs from '@/components/StatusTabs';
+import StatusTabs, { STATUS_TABS } from '@/components/StatusTabs';
 import type { StatusFilter } from '@/components/StatusTabs';
 import Pagination from '@/components/Pagination';
 import styles from './HRDashboardPage.module.css';
@@ -303,7 +303,10 @@ export default function HRDashboardPage() {
           <div className={styles.emptyState}>
             <p>
               Нет сессий
-              {statusFilter !== 'ALL' ? ` со статусом ${statusFilter}` : ''}.
+              {statusFilter !== 'ALL'
+                ? ` с фильтром «${STATUS_TABS.find((t) => t.value === statusFilter)?.label ?? ''}»`
+                : ''}
+              .
             </p>
           </div>
         ) : (

@@ -4,14 +4,9 @@
  * User management surface: view all staff accounts, create new ones, delete.
  * Protected by AdminRoute — token and userId are non-null when this renders.
  *
- * ⚠ All API endpoints on this page are UNCONFIRMED with the backend team.
- *   Every fetch call is preceded by a TODO comment. Search "TODO" in this
- *   file to find all provisional API assumptions before production.
- *
  * Optimistic mutations:
  *   Create → prepend new user to list (no re-fetch).
  *   Delete → filter deleted user from list (no re-fetch).
- *   If consistency is required, TODO: add re-fetch after mutations.
  *
  * currentPage: useState (not URL param) — admin user management is a
  * management tool, not a shareable/bookmarkable URL.
@@ -27,6 +22,7 @@ import CreateUserModal from '@/components/CreateUserModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import EditUserModal from '@/components/EditUserModal';
 import Pagination from '@/components/Pagination';
+import BackLink from '@/components/BackLink';
 import styles from './AdminUsersPage.module.css';
 
 // ---------------------------------------------------------------------------
@@ -47,15 +43,14 @@ const COLUMNS = [
 // API response types
 // ---------------------------------------------------------------------------
 
-// TODO: Confirm pagination wrapper shape with backend
-interface AdminUsersResponse {
-  content: AdminUser[];
-  page: {
-    size:          number;
-    number:        number;
-    totalElements: number;
-    totalPages:    number;
-  };
+/** Spring Data Page: либо вложенный `page`, либо плоские totalPages/number/size. */
+interface AdminUsersListJson {
+  content:        AdminUser[];
+  page?:          { totalPages: number; size?: number; number?: number; totalElements?: number };
+  totalPages?:    number;
+  totalElements?: number;
+  size?:          number;
+  number?:        number;
 }
 
 interface PageInfo {
@@ -130,25 +125,26 @@ export default function AdminUsersPage() {
       setError(null);
 
       try {
-        // TODO: Endpoint not confirmed with backend. Clarify before production.
-        // TODO: Confirm endpoint URL — /api/v1/admin/users?
-        // TODO: Confirm whether GET /admin/users returns paginated or flat array
         const res = await fetch(
           `/api/v1/admin/users?page=${currentPage}&size=${PAGE_SIZE}`,
           { headers: { Authorization: `Bearer ${bearerToken}` } },
         );
 
-        if (res.status === 404) {
-          // TODO: endpoint not yet implemented — surface a placeholder state
-          setError('Управление пользователями временно недоступно. (API не реализован)');
+        if (res.status === 403) {
+          setError('Недостаточно прав для просмотра списка пользователей.');
           return;
         }
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        const data = await res.json() as AdminUsersResponse;
-        setUsers(data.content);
-        setPageInfo({ totalPages: data.page.totalPages });
+        const data = (await res.json()) as AdminUsersListJson;
+        const list = Array.isArray(data.content) ? data.content : [];
+        setUsers(list);
+        const totalPages =
+          data.page?.totalPages ??
+          data.totalPages ??
+          (list.length > 0 ? 1 : 1);
+        setPageInfo({ totalPages: Math.max(1, totalPages) });
       } catch {
         setError('Не удалось загрузить список пользователей.');
       } finally {
@@ -157,8 +153,7 @@ export default function AdminUsersPage() {
     }
 
     void fetchUsers();
-  }, [currentPage, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
-  // token is stable for session lifetime — omitting avoids re-fetch on login
+  }, [currentPage, retryCount, token]);
 
   useEffect(() => {
     const bearerToken = token ?? '';
@@ -215,15 +210,12 @@ export default function AdminUsersPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className={styles.adminPage}>
+      <BackLink to="/">На главную</BackLink>
 
       {/* ── Page header ── */}
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.pageTitle}>Пользователи</h1>
-          {/* Visible reminder that all API calls in this file are provisional */}
-          <p className={styles.pageSubtitle}>
-            TODO: эндпоинт /api/v1/admin/users не подтверждён
-          </p>
         </div>
 
         <button

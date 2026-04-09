@@ -20,6 +20,7 @@ import NotesPanel from '@/components/NotesPanel';
 import VerdictModal from '@/components/VerdictModal';
 import LanguageSelector from '@/components/LanguageSelector';
 import InterviewTimer from '@/components/InterviewTimer';
+import BackButton from '@/components/BackButton';
 import styles from './InterviewerRoomPage.module.css';
 
 export default function InterviewerRoomPage() {
@@ -65,6 +66,8 @@ export default function InterviewerRoomPage() {
       <header className={styles.pageHeader}>
 
         <div className={styles.headerLeft}>
+          <BackButton to="/interviewer/sessions" label="К сессиям" />
+
           {/* Connection status */}
           <span className={`${styles.statusDot} ${
             wsStatus === 'live'         ? styles.dotOn  :
