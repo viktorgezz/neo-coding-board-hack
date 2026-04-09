@@ -1,6 +1,6 @@
 spring:
   application:
-    name: k1-typing-backend
+    name: core-service
   datasource:
     url: jdbc:postgresql://${POSTGRESQL_HOST:db}:${POSTGRESQL_PORT:5432}/${POSTGRESQL_DB:coding_board_db}
     username: ${POSTGRESQL_USERNAME:postgres}

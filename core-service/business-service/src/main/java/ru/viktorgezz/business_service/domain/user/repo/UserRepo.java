@@ -3,6 +3,9 @@ package ru.viktorgezz.business_service.domain.user.repo;
 import org.springframework.data.repository.CrudRepository;
 import ru.viktorgezz.business_service.domain.user.User;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.Optional;
 
 /**
@@ -10,5 +13,6 @@ import java.util.Optional;
  */
 public interface UserRepo extends CrudRepository<User, Long> {
 
-    Optional<User> findByUsername(String username);
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.candidate WHERE u.username = :username")
+    Optional<User> findByUsername(@Param("username") String username);
 }

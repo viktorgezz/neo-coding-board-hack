@@ -7,6 +7,9 @@ import ru.viktorgezz.business_service.domain.rooms.Room;
 import ru.viktorgezz.business_service.domain.rooms.RoomStatus;
 import ru.viktorgezz.business_service.domain.user.User;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.UUID;
 
 /**
@@ -21,7 +24,9 @@ public interface RoomPagingRepo extends PagingAndSortingRepository<Room, UUID> {
      * @param pageable    параметры пагинации
      * @return страница комнат
      */
-    Page<Room> findByInterviewersContaining(User interviewer, Pageable pageable);
+    @Query(value = "SELECT r FROM Room r LEFT JOIN FETCH r.candidate JOIN r.interviewers i WHERE i = :interviewer",
+           countQuery = "SELECT count(r) FROM Room r JOIN r.interviewers i WHERE i = :interviewer")
+    Page<Room> findByInterviewersContaining(@Param("interviewer") User interviewer, Pageable pageable);
 
     /**
      * Находит все комнаты с указанным статусом.
@@ -30,5 +35,17 @@ public interface RoomPagingRepo extends PagingAndSortingRepository<Room, UUID> {
      * @param pageable параметры пагинации
      * @return страница комнат
      */
-    Page<Room> findByStatus(RoomStatus status, Pageable pageable);
+    @Query(value = "SELECT r FROM Room r LEFT JOIN FETCH r.candidate WHERE r.status = :status",
+           countQuery = "SELECT count(r) FROM Room r WHERE r.status = :status")
+    Page<Room> findByStatus(@Param("status") RoomStatus status, Pageable pageable);
+
+    /**
+     * Возвращает все комнаты с подгруженным кандидатом.
+     *
+     * @param pageable параметры пагинации
+     * @return страница комнат
+     */
+    @Query(value = "SELECT r FROM Room r LEFT JOIN FETCH r.candidate",
+           countQuery = "SELECT count(r) FROM Room r")
+    Page<Room> findAll(Pageable pageable);
 }
