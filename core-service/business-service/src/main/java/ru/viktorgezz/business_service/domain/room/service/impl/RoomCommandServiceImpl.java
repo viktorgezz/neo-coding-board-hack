@@ -32,7 +32,8 @@ import static ru.viktorgezz.business_service.domain.user.util.CurrentUserUtils.g
 @RequiredArgsConstructor
 public class RoomCommandServiceImpl implements RoomCommandService {
 
-    private static final String JOIN_URL_TEMPLATE = "%s/room/%s/join";
+    /** Must match frontend route {@code /session/:id/join} */
+    private static final String JOIN_URL_TEMPLATE = "%s/session/%s/join";
 
     private final RoomRepo roomRepo;
     private final AuthenticationService authenticationService;
