@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import ru.viktorgezz.business_service.domain.candidate.Candidate;
-import ru.viktorgezz.business_service.domain.rooms.Room;
+import ru.viktorgezz.business_service.domain.room.Room;
 import ru.viktorgezz.business_service.domain.user.User;
 
 import java.time.Instant;
