@@ -174,41 +174,29 @@ $$
 
 Если в БД достаточно peer-комнат (минимум 2), параметры берутся эмпирически:
 
-$$
-\mu = \mathrm{mean}(\text{raw}_{peer}), \qquad
-\sigma = \mathrm{std}_{pop}(\text{raw}_{peer})
-$$
+`μ = mean(raw_peer),  σ = std_pop(raw_peer)`
 
-$$
-z = \frac{\text{raw}_{candidate} - \mu}{\sigma}
-$$
+`z = (raw_candidate - μ) / σ`
 
 Перцентиль в эмпирическом режиме:
 
-$$
-\text{percentile} = 100 \cdot \frac{|\{s \in peer: s \le \text{raw}_{candidate}\}|}{|peer|}
-$$
+`percentile = 100 * ( count(s in peer, where s <= raw_candidate) / count(peer) )`
 
 Если peer-данных мало, используются fallback-параметры:
-- $\mu = 28.0$
-- $\sigma = 10.0$
+- `μ = 28.0`
+- `σ = 10.0`
 
 И перцентиль считается через CDF стандартного нормального распределения:
 
-$$
-\Phi(z) = \frac{1}{2}\left(1 + \mathrm{erf}\left(\frac{z}{\sqrt{2}}\right)\right), \qquad
-\text{percentile} = 100 \cdot \Phi(z)
-$$
+`Φ(z) = 0.5 * (1 + erf(z / sqrt(2)))`
 
-Кривая `distributionCurve` строится как нормализованная плотность $N(0,1)$:
+`percentile = 100 * Φ(z)`
 
-$$
-\varphi(x) = \frac{1}{\sqrt{2\pi}}e^{-x^2/2}
-$$
+Кривая `distributionCurve` строится как нормализованная плотность `N(0,1)`:
 
-$$
-y_{norm}(x) = \frac{\varphi(x)}{\max_x \varphi(x)}
-$$
+`φ(x) = (1 / sqrt(2π)) * exp(-x² / 2)`
+
+`y_norm(x) = φ(x) / max_x(φ(x))`
 
 ### 4.5 Radar-метрики
 
