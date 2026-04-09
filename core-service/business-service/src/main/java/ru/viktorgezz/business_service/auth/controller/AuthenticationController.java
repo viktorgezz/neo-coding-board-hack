@@ -35,7 +35,7 @@ public class AuthenticationController {
         authenticationService.logout(refreshToken);
     }
 
-    @Operation(summary = "Регистрация нового пользователя")
+    @Operation(summary = "Регистрация нового сотрудника")
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public void register(
