@@ -63,6 +63,12 @@ public class SecurityConfig {
             "/api/v1/rooms",
             "/api/v1/rooms/start/**",
             "/api/v1/rooms/finish/**",
+            "/api/v1/rooms/*/notes",
+            "/api/v1/rooms/*/notes/**",
+    };
+
+    private static final String[] CODE_URLS = {
+            "/api/v1/rooms/*/code/**"
     };
 
     private static final String[] HR_URLS = {
@@ -83,6 +89,7 @@ public class SecurityConfig {
                                 .requestMatchers(SWAGGER_URLS).permitAll()
                                 .requestMatchers(HR_URLS).hasAnyRole("HR", "SUPERUSER")
                                 .requestMatchers(INTERVIEWER_URLS).hasAnyRole("INTERVIEWER", "SUPERUSER")
+                                .requestMatchers(CODE_URLS).hasAnyRole("HR", "INTERVIEWER", "SUPERUSER")
                                 .requestMatchers(HttpMethod.DELETE, "/api/v1/rooms/*").hasAnyRole("HR", "SUPERUSER")
                                 .anyRequest().authenticated()
                 )

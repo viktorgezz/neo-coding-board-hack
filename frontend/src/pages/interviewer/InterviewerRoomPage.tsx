@@ -118,7 +118,7 @@ export default function InterviewerRoomPage() {
       {/* ── Main content ─────────────────────────────────────────────── */}
       <div className={styles.mainContent}>
 
-        {/* Left: read-only Monaco via CodeViewer */}
+        {/* Left: shared Monaco + WSCodeService */}
         <div className={styles.codeColumn}>
           <CodeViewer
             idRoom={idRoom}

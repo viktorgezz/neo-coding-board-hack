@@ -5,20 +5,19 @@ from dataclasses import dataclass
 from typing import Literal
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 
 UserRole = Literal["candidate", "interviewer"]
 
 
 class CursorIn(BaseModel):
-    line: int = Field(ge=1)
-    column: int = Field(ge=1)
+    """Incoming cursor; extra keys (selection range) are forwarded to peers."""
 
+    model_config = ConfigDict(extra="allow")
 
-class CursorOut(CursorIn):
-    timestamp: float
-    from_role: UserRole
+    line: int
+    column: int
 
 
 @dataclass
@@ -55,12 +54,12 @@ class ConnectionManager:
             return 0.0
         return round(time.monotonic() - started_at, 3)
 
-    async def broadcast_to_others(self, interview_id: str, sender: Participant, payload: CursorOut) -> None:
+    async def broadcast_to_others(self, interview_id: str, sender: Participant, payload: dict) -> None:
         for participant in list(self.rooms.get(interview_id, [])):
             if participant is sender:
                 continue
             try:
-                await participant.websocket.send_json(payload.model_dump())
+                await participant.websocket.send_json(payload)
             except Exception:
                 self.disconnect(interview_id, participant)
 
@@ -86,12 +85,12 @@ async def cursor_ws(interview_id: str, user_role: str, websocket: WebSocket) -> 
                 await websocket.send_json({"error": "invalid_cursor_payload", "details": exc.errors()})
                 continue
 
-            outgoing = CursorOut(
-                line=cursor.line,
-                column=cursor.column,
-                timestamp=manager.room_elapsed(interview_id),
-                from_role=role,
-            )
+            base = cursor.model_dump(mode="json", exclude_none=True)
+            outgoing: dict = {
+                **base,
+                "timestamp": manager.room_elapsed(interview_id),
+                "from_role": role,
+            }
             await manager.broadcast_to_others(interview_id, participant, outgoing)
     except WebSocketDisconnect:
         pass

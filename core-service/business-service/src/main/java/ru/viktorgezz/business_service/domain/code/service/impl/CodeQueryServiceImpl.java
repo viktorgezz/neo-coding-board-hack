@@ -13,7 +13,7 @@ import ru.viktorgezz.business_service.domain.code.dto.CodeSnapshotResponse;
 import ru.viktorgezz.business_service.domain.code.mapper.CodeSnapshotMapper;
 import ru.viktorgezz.business_service.domain.code.repo.CodeSnapshotRepo;
 import ru.viktorgezz.business_service.domain.code.service.intrf.CodeQueryService;
-import ru.viktorgezz.business_service.domain.rooms.repo.RoomRepo;
+import ru.viktorgezz.business_service.domain.room.repo.RoomRepo;
 import ru.viktorgezz.business_service.exception.BusinessException;
 import ru.viktorgezz.business_service.exception.ErrorCode;
 

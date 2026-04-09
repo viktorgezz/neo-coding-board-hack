@@ -4,7 +4,7 @@
  * The candidate's complete interview environment. Three silent background
  * processes run concurrently with zero UI surface:
  *
- *   1. WebSocket (via useWebSocket): every keystroke streams to interviewer.
+ *   1. WebSocket (useWebSocket → WSCodeService): debounced code + language sync with interviewer.
  *   2. Metric POSTs: paste and tab-switch events fire-and-forget to server.
  *   3. Polling (5s): watches for session FINISHED → silently navigates to /done.
  *
@@ -26,7 +26,10 @@ import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 
 import { getCandidateToken, getCandidateVacancy } from '@/auth/candidateSession';
 import { useWebSocket } from '@/hooks/useWebSocket';
-import { useCursorSocket } from '@/hooks/useCursorSocket';
+import { useCursorSocket, type CursorSelectionData } from '@/hooks/useCursorSocket';
+import { useRoomCodeSync } from '@/hooks/useRoomCodeSync';
+import { useRafThrottleCallback } from '@/hooks/useRafThrottleCallback';
+import { cursorDecorationKey } from '@/utils/cursorDecorationKey';
 import LanguageSelector from '@/components/LanguageSelector';
 import InterviewTimer from '@/components/InterviewTimer';
 import { defineNeoTheme, NEO_THEME_NAME } from '@/styles/monacoTheme';
@@ -46,6 +49,7 @@ const EDITOR_FALLBACK = <div className={styles.editorFallback} />;
 // Monaco editor type derived from @monaco-editor/react's OnMount signature —
 // avoids a direct 'monaco-editor' import while keeping full type safety.
 type IStandaloneCodeEditor = Parameters<OnMount>[0];
+type Monaco                = Parameters<OnMount>[1];
 
 // Maps idLanguage values (sent via WebSocket) → Monaco language identifiers
 const MONACO_LANG: Record<string, string> = {
@@ -61,6 +65,10 @@ const MONACO_LANG: Record<string, string> = {
 const handleBeforeMount: BeforeMount = (monaco) => {
   defineNeoTheme(monaco);
 };
+
+function toMonacoLanguage(id: string): string {
+  return MONACO_LANG[id] ?? id.toLowerCase();
+}
 
 // ── Monaco options object defined outside the component ────────────────────
 // This object reference is stable — MonacoEditor will not re-apply options
@@ -141,16 +149,9 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
    * the component (and potentially remount Monaco) on every WS reconnect.
    */
   const editorRef = useRef<IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<Monaco | null>(null);
   const interviewerDecorationsRef          = useRef<string[]>([]);
   const interviewerSelectionDecorationsRef = useRef<string[]>([]);
-
-  /**
-   * Last textContent value — updated synchronously in onChange so sendCursor
-   * always piggy-backs the current code text onto cursor publish payloads.
-   * Never in state: every keystroke updating state would be catastrophically
-   * expensive in a Monaco context.
-   */
-  const textContentRef = useRef('');
 
   /**
    * Cooldown flag that deduplicates the double-fire from:
@@ -160,28 +161,44 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
    * action would POST twice.
    */
   const pasteMetricCooldownRef = useRef(false);
+  const suppressOutboundRef = useRef(false);
+  const skipNextLanguageSendRef = useRef(false);
+  const lastLocalEditAtRef = useRef(0);
+  const lastInterviewerCursorKeyRef = useRef('');
+  const [editorMountTick, setEditorMountTick] = useState(0);
+  const [blurTick, setBlurTick] = useState(0);
+  const blurEditorDisposableRef = useRef<{ dispose: () => void } | null>(null);
 
   // ── WebSocket hook ────────────────────────────────────────────────────────
 
-  const { sendCode, sendCursor } = useWebSocket({
+  const { sendCode, seedLatestText, flushSend, liveCode } = useWebSocket({
     idRoom,
     role: 'candidate',
     token,
     idLanguage,
-    // idLanguage changes propagate into the hook via its own useEffect([idLanguage])
-    // which updates idLanguageRef.current. The STOMP connection is not restarted.
   });
-  const { sendCursorPosition, cursorFromInterviewer } = useCursorSocket({
+  const { sendCursorPosition, cursorFromInterviewer, invalidatePeerCursor } = useCursorSocket({
     interviewId: idRoom,
     role: 'candidate',
   });
+
+  const sendCursorPositionRaf = useRafThrottleCallback(
+    useCallback(
+      (line: number, column: number, sel?: CursorSelectionData) => {
+        sendCursorPosition(line, column, sel);
+      },
+      [sendCursorPosition],
+    ),
+  );
 
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
 
-    // cursorFromInterviewer is null when the interviewer hides their cursor
-    // (sendCursorHide() was called) — clear all decorations immediately.
+    const key = cursorDecorationKey(cursorFromInterviewer ?? null);
+    if (key === lastInterviewerCursorKeyRef.current) return;
+    lastInterviewerCursorKeyRef.current = key;
+
     if (!cursorFromInterviewer) {
       interviewerDecorationsRef.current = editor.deltaDecorations(
         interviewerDecorationsRef.current, [],
@@ -237,7 +254,7 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
         interviewerSelectionDecorationsRef.current, [],
       );
     }
-  }, [cursorFromInterviewer]);
+  }, [cursorFromInterviewer, editorMountTick]);
 
   // ── Metric callbacks ──────────────────────────────────────────────────────
   // Defined with useCallback so their references are stable for the document
@@ -343,34 +360,104 @@ const CandidateEditorContent = memo(function CandidateEditorContent({
     };
   }, [fireMetricPaste, handleVisibilityChange]);
 
+  useEffect(() => {
+    return () => {
+      blurEditorDisposableRef.current?.dispose();
+      blurEditorDisposableRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        lastLocalEditAtRef.current = 0;
+        const ed = editorRef.current;
+        if (ed) flushSend(ed.getValue());
+        else flushSend();
+        setBlurTick((n) => n + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [flushSend]);
+
+  // ── Peer code/language from WSCodeService (no echo of own messages) ────
+
+  const idLanguageRef = useRef(idLanguage);
+  useEffect(() => {
+    idLanguageRef.current = idLanguage;
+  }, [idLanguage]);
+
+  useRoomCodeSync({
+    liveCode,
+    editorRef,
+    monacoRef,
+    languageRef: idLanguageRef,
+    onPeerLanguage: setIdLanguage,
+    skipNextLanguageSendRef,
+    lastLocalEditAtRef,
+    blurTick,
+    seedLatestText,
+    suppressOutboundRef,
+    toMonacoLanguage,
+    invalidatePeerCursor,
+  });
+
+  // ── Language selector alone — push id_language to peers ───────────────
+
+  const prevLanguageRef = useRef(idLanguage);
+  useEffect(() => {
+    if (prevLanguageRef.current === idLanguage) return;
+    prevLanguageRef.current = idLanguage;
+    if (skipNextLanguageSendRef.current) {
+      skipNextLanguageSendRef.current = false;
+      return;
+    }
+    sendCode(editorRef.current?.getValue() ?? '');
+  }, [idLanguage, sendCode]);
+
   // ── Stable Monaco event handlers ─────────────────────────────────────────
   // These are passed as props to MonacoEditor. Stable refs prevent unnecessary
   // Monaco re-initialization when parent re-renders (e.g., language change).
 
-  const handleEditorMount = useCallback<OnMount>((editor, _monaco) => {
+  const handleEditorMount = useCallback<OnMount>((editor, monaco) => {
     editorRef.current = editor;
+    monacoRef.current  = monaco;
 
-    // Cursor position → sendCursor (immediate, no debounce in hook)
-    editor.onDidChangeCursorPosition((e) => {
-      sendCursor(e.position.lineNumber, e.position.column);
-      sendCursorPosition(e.position.lineNumber, e.position.column);
+    editor.onDidChangeCursorSelection((e) => {
+      const sel = e.selection;
+      if (sel.isEmpty()) {
+        sendCursorPositionRaf(sel.positionLineNumber, sel.positionColumn);
+      } else {
+        sendCursorPositionRaf(sel.positionLineNumber, sel.positionColumn, {
+          selStartLine: sel.startLineNumber,
+          selStartCol:  sel.startColumn,
+          selEndLine:   sel.endLineNumber,
+          selEndCol:    sel.endColumn,
+        });
+      }
     });
 
-    // Monaco paste event — works for paste via editor command/keyboard
-    // document 'paste' event (registered above) catches Ctrl+V and right-click
-    // Both paths flow through fireMetricPaste() which deduplicates via cooldown
+    blurEditorDisposableRef.current?.dispose();
+    blurEditorDisposableRef.current = editor.onDidBlurEditorWidget(() => {
+      lastLocalEditAtRef.current = 0;
+      flushSend(editor.getValue());
+      setBlurTick((n) => n + 1);
+    });
+
+    seedLatestText(editor.getValue());
+
     editor.onDidPaste(() => {
       fireMetricPaste();
     });
-  }, [sendCursor, sendCursorPosition, fireMetricPaste]);
+
+    setEditorMountTick((n) => n + 1);
+  }, [sendCursorPositionRaf, fireMetricPaste, flushSend, seedLatestText]);
 
   const handleEditorChange = useCallback<OnChange>((value, _ev) => {
-    const text = value ?? '';
-    // Update textContentRef synchronously so sendCursor always piggy-backs
-    // the current code onto immediate cursor payloads (no stale text)
-    textContentRef.current = text;
-    // sendCode debounces internally — rapid typing → one WS publish per 300ms idle
-    sendCode(text);
+    if (suppressOutboundRef.current) return;
+    lastLocalEditAtRef.current = Date.now();
+    sendCode(value ?? '');
   }, [sendCode]);
 
   // ── Render ────────────────────────────────────────────────────────────────
