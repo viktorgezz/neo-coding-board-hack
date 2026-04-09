@@ -29,7 +29,6 @@ Thumbs.db
 # СЕКРЕТЫ И ОКРУЖЕНИЕ (ENV)
 # ==========================================
 .env
-.env.*
 !.env.example
 venv/
 .venv/
@@ -65,7 +64,6 @@ __pycache__/
 htmlcov/
 .mypy_cache/
 .tox/
-.venv
 
 # Django специфичное
 db.sqlite3
@@ -102,6 +100,3 @@ yarn-error.log*
 logs/
 *.tmp
 *.bak
-
-# AnalyticsService (локальный SQLite)
-AnaliticsService/*.db

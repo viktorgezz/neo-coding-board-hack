@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: k1-typing-backend
+  datasource:
+    url: jdbc:postgresql://${POSTGRESQL_HOST:db}:${POSTGRESQL_PORT:5432}/${POSTGRESQL_DB:coding_board_db}
+    username: ${POSTGRESQL_USERNAME:postgres}
+    password: ${POSTGRESQL_PASSWORD:strong_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+security:
+  jwt:
+    employees:
+      access-expiration-ms: 900000
+      refresh-expiration-ms: 172800000
+    users:
+      access-expiration-ms: 900000
+      refresh-expiration-ms: 7200000
+  origin:
+    frontend: ${FRONTEND_ORIGIN:http://localhost:5173}
+
+logging:
+  level:
+    ru.viktorgezz.business_service: DEBUG
+    ru.viktorgezz.security: DEBUG
