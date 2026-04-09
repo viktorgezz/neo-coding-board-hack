@@ -56,6 +56,28 @@ services:
     ports:
       - "8002:8000"
     restart: unless-stopped
+    
+  app:
+    build:
+      context: ./core-service
+      dockerfile: Dockerfile
+    env_file:
+      - ./core-service/.env
+    container_name: java-business-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ws-code-service:
+    container_name: neo_ws_code_service
+    build:
+      context: ./WSCodeService
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    restart: unless-stopped
 
 volumes:
   postgres_data:
