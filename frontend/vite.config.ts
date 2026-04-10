@@ -28,69 +28,69 @@ function makeJWT(payload: Record<string, unknown>): string {
 
 // ── Тестовые пользователи ─────────────────────────────────────────────────────
 const MOCK_STAFF: Record<string, { role: string; name: string; id: string }> = {
-  'interviewer@test.ru': { role: 'interviewer', name: 'Анна Смирнова',      id: 'uid-1' },
-  'hr@test.ru':          { role: 'hr',          name: 'Мария Козлова',       id: 'uid-2' },
-  'admin@test.ru':       { role: 'admin',       name: 'Иван Администратор', id: 'uid-3' },
+  'interviewer@test.ru': { role: 'interviewer', name: 'Анна Смирнова', id: 'uid-1' },
+  'hr@test.ru': { role: 'hr', name: 'Мария Козлова', id: 'uid-2' },
+  'admin@test.ru': { role: 'admin', name: 'Иван Администратор', id: 'uid-3' },
 };
 
 // ── Мок-данные ────────────────────────────────────────────────────────────────
 const MOCK_ROOMS = [
   {
-    idRoom:         'room-001',
-    nameCandidate:  'Пётр Иванов',
-    status:         'ACTIVE',
-    dateStart:      '2026-04-09T10:00:00Z',
-    dateEnd:        null,
-    timeOffset:     '15:30',
+    idRoom: 'room-001',
+    nameCandidate: 'Пётр Иванов',
+    status: 'ACTIVE',
+    dateStart: '2026-04-09T10:00:00Z',
+    dateEnd: null,
+    timeOffset: '15:30',
   },
   {
-    idRoom:         'room-002',
-    nameCandidate:  'Алексей Сидоров',
-    status:         'FINISHED',
-    dateStart:      '2026-04-08T14:00:00Z',
-    dateEnd:        '2026-04-08T15:30:00Z',
-    timeOffset:     '01:30:00',
+    idRoom: 'room-002',
+    nameCandidate: 'Алексей Сидоров',
+    status: 'FINISHED',
+    dateStart: '2026-04-08T14:00:00Z',
+    dateEnd: '2026-04-08T15:30:00Z',
+    timeOffset: '01:30:00',
     codeResolution: 'PASSED',
   },
   {
-    idRoom:         'room-003',
-    nameCandidate:  'Екатерина Белова',
-    status:         'FINISHED',
-    dateStart:      '2026-04-07T11:00:00Z',
-    dateEnd:        '2026-04-07T12:45:00Z',
-    timeOffset:     '01:45:00',
+    idRoom: 'room-003',
+    nameCandidate: 'Екатерина Белова',
+    status: 'FINISHED',
+    dateStart: '2026-04-07T11:00:00Z',
+    dateEnd: '2026-04-07T12:45:00Z',
+    timeOffset: '01:45:00',
     codeResolution: 'REJECTED',
   },
   {
-    idRoom:         'room-004',
-    nameCandidate:  null,
-    status:         'ACTIVE',
-    dateStart:      '2026-04-09T08:30:00Z',
-    dateEnd:        null,
-    timeOffset:     '03:15',
+    idRoom: 'room-004',
+    nameCandidate: null,
+    status: 'ACTIVE',
+    dateStart: '2026-04-09T08:30:00Z',
+    dateEnd: null,
+    timeOffset: '03:15',
   },
 ];
 
 let MOCK_ADMIN_USERS = [
   {
-    id:        'uid-1',
-    name:      'Анна Смирнова',
-    email:     'interviewer@test.ru',
-    role:      'INTERVIEWER',
+    id: 'uid-1',
+    name: 'Анна Смирнова',
+    email: 'interviewer@test.ru',
+    role: 'INTERVIEWER',
     createdAt: '2026-01-15T09:00:00Z',
   },
   {
-    id:        'uid-2',
-    name:      'Мария Козлова',
-    email:     'hr@test.ru',
-    role:      'HR',
+    id: 'uid-2',
+    name: 'Мария Козлова',
+    email: 'hr@test.ru',
+    role: 'HR',
     createdAt: '2026-01-20T11:00:00Z',
   },
   {
-    id:        'uid-4',
-    name:      'Сергей Попов',
-    email:     'interviewer2@test.ru',
-    role:      'INTERVIEWER',
+    id: 'uid-4',
+    name: 'Сергей Попов',
+    email: 'interviewer2@test.ru',
+    role: 'INTERVIEWER',
     createdAt: '2026-02-03T14:00:00Z',
   },
 ];
@@ -103,7 +103,7 @@ function readBody(req: unknown): Promise<Record<string, unknown>> {
     let raw = '';
     r.on('data', (chunk: unknown) => { raw += String(chunk); });
     r.on('end', () => {
-      try   { resolve(JSON.parse(raw) as Record<string, unknown>); }
+      try { resolve(JSON.parse(raw) as Record<string, unknown>); }
       catch { resolve({}); }
     });
   });
@@ -120,8 +120,8 @@ function mockApiPlugin() {
         const rawUrl: string = req.url ?? '';
         if (!rawUrl.startsWith('/api/')) return next();
 
-        const url    = new URL(rawUrl, 'http://localhost');
-        const path   = url.pathname;
+        const url = new URL(rawUrl, 'http://localhost');
+        const path = url.pathname;
         const method = (req.method as string).toUpperCase();
 
         function json(data: unknown, status = 200) {
@@ -131,9 +131,9 @@ function mockApiPlugin() {
 
         // ── POST /api/v1/auth/login ──────────────────────────────────────────
         if (method === 'POST' && path === '/api/v1/auth/login') {
-          const body  = await readBody(req);
+          const body = await readBody(req);
           const email = String(body.email ?? '').toLowerCase().trim();
-          const user  = MOCK_STAFF[email];
+          const user = MOCK_STAFF[email];
 
           if (!user) {
             return json({ message: 'Неверный email или пароль' }, 401);
@@ -141,7 +141,7 @@ function mockApiPlugin() {
 
           const now = Math.floor(Date.now() / 1000);
           return json({
-            tokenAccess:  makeJWT({ sub: user.id, role: user.role, exp: now + 3600,  iat: now }),
+            tokenAccess: makeJWT({ sub: user.id, role: user.role, exp: now + 3600, iat: now }),
             tokenRefresh: makeJWT({ sub: user.id, role: user.role, exp: now + 86400, iat: now }),
             name: user.name,
           });
@@ -157,19 +157,19 @@ function mockApiPlugin() {
 
         // ── POST /api/v1/rooms — создать комнату ─────────────────────────────
         if (method === 'POST' && path === '/api/v1/rooms') {
-          const body   = await readBody(req);
+          const body = await readBody(req);
           const idRoom = `mock-room-${Date.now()}`;
           return json({
             idRoom,
-            url:         `http://localhost:5173/session/${idRoom}/join`,
-            titleRoom:   body.titleRoom,
+            url: `http://localhost:5173/session/${idRoom}/join`,
+            titleRoom: body.titleRoom,
             nameVacancy: body.nameVacancy,
           }, 201);
         }
 
         // ── GET /api/v1/rooms/all — все сессии для HR ────────────────────────
         if (method === 'GET' && path === '/api/v1/rooms/all') {
-          const status   = url.searchParams.get('status');
+          const status = url.searchParams.get('status');
           const filtered = status
             ? MOCK_ROOMS.filter((r) => r.status === status)
             : MOCK_ROOMS;
@@ -195,7 +195,7 @@ function mockApiPlugin() {
         const regM = path.match(/^\/api\/v1\/rooms\/register\/([^/]+)$/);
         if (method === 'POST' && regM) {
           const idRoom = regM[1];
-          const now    = Math.floor(Date.now() / 1000);
+          const now = Math.floor(Date.now() / 1000);
           return json({
             tokenAccess: makeJWT({
               sub: 'candidate-1', role: 'candidate',
@@ -226,9 +226,9 @@ function mockApiPlugin() {
         if (method === 'POST' && notesPostM) {
           const body = await readBody(req);
           return json({
-            id:          `note-${Date.now()}`,
+            id: `note-${Date.now()}`,
             textContent: body.textContent,
-            timeOffset:  '10:00',
+            timeOffset: '10:00',
             timeCreated: new Date().toISOString(),
           }, 201);
         }
@@ -263,13 +263,13 @@ function mockApiPlugin() {
           const body = await readBody(req);
           const login = String(body.username ?? body.email ?? '');
           return json({
-            id:                `user-${Date.now()}`,
-            name:              body.name,
-            username:          login,
-            email:             login,
-            role:              body.role,
+            id: `user-${Date.now()}`,
+            name: body.name,
+            username: login,
+            email: login,
+            role: body.role,
             temporaryPassword: body.temporaryPassword,
-            createdAt:         new Date().toISOString(),
+            createdAt: new Date().toISOString(),
           }, 201);
         }
 
@@ -308,7 +308,7 @@ function mockApiPlugin() {
 }
 
 export default defineConfig({
-  // mockApiPlugin() intentionally removed — real backend at 111.88.127.60:8080
+  // mockApiPlugin() intentionally removed — real backend at 111.88.127.208:8080
   plugins: [react()],
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
@@ -317,7 +317,7 @@ export default defineConfig({
     proxy: {
       // ── Main business API (rooms, auth, notes, code) ─────────────────
       '/api': {
-        target:       'http://111.88.127.60:8080',
+        target: 'http://111.88.127.208:8080',
         changeOrigin: true,
         configure(proxy) {
           proxy.on('proxyReq', (proxyReq) => {
@@ -332,9 +332,9 @@ export default defineConfig({
 
       // ── STOMP WebSocket (code sync) ───────────────────────────────────
       '/ws': {
-        target:       'http://111.88.127.60:8080',
+        target: 'http://111.88.127.208:8080',
         changeOrigin: true,
-        ws:           true,
+        ws: true,
         configure(proxy) {
           proxy.on('proxyReq', (proxyReq) => {
             proxyReq.removeHeader('origin');
@@ -356,16 +356,16 @@ export default defineConfig({
 
       // ── Tasks Bank Service ────────────────────────────────────────────
       '/tasks-api': {
-        target:       'http://111.88.127.60:8001',
+        target: 'http://111.88.127.208:8001',
         changeOrigin: true,
-        rewrite:      (path) => path.replace(/^\/tasks-api/, ''),
+        rewrite: (path) => path.replace(/^\/tasks-api/, ''),
       },
 
       // ── Analytics & AI (history, metrics, assessment, reports) ─────────
       '/analytics-api': {
-        target:       'http://111.88.127.60:8000',
+        target: 'http://111.88.127.208:8000',
         changeOrigin: true,
-        rewrite:      (path) => path.replace(/^\/analytics-api/, ''),
+        rewrite: (path) => path.replace(/^\/analytics-api/, ''),
       },
     },
   },
