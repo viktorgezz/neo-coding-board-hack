@@ -19,29 +19,17 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import type { AdminUser } from './UserRow';
 import styles from './CreateUserModal.module.css';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-// TODO: Confirm request body field names with backend
-interface CreateUserRequest {
-  email:             string;
-  name:              string;
-  role:              'HR' | 'INTERVIEWER';
-  temporaryPassword: string; // TODO: may be 'password' or 'tempPassword' — confirm
-}
-
-// TODO: Confirm response shape with backend — does POST /admin/users echo back temporaryPassword?
-interface CreateUserResponse {
-  id:                string;
-  email:             string;
-  name:              string;
-  role:              'HR' | 'INTERVIEWER';
-  temporaryPassword: string; // TODO: backend may not return this — handled below
-  createdAt:         string;
+/** Тело POST /api/v1/auth/register (RegistrationRequest в Java). */
+interface RegisterStaffRequest {
+  username: string;
+  password: string;
+  role:     'INTERVIEWER' | 'HR';
 }
 
 interface CreatedCredentials {
@@ -58,7 +46,8 @@ export interface CreateUserModalProps {
   isOpen:    boolean;
   token:     string;
   onClose:   () => void;
-  onSuccess: (newUser: AdminUser) => void; // prepend to parent list
+  /** После успешного POST /api/v1/auth/register — обновить список (например refetch). */
+  onSuccess: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,7 +76,7 @@ export default function CreateUserModal({
 interface ContentProps {
   token:     string;
   onClose:   () => void;
-  onSuccess: (newUser: AdminUser) => void;
+  onSuccess: () => void;
 }
 
 function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
@@ -133,21 +122,17 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
     setError(null);
 
     try {
-      // TODO: Endpoint not confirmed with backend. Clarify before production.
-      // TODO: Confirm endpoint URL — is it /api/v1/admin/users or /api/v1/users?
-      const res = await fetch('/api/v1/admin/users', {
+      const res = await fetch('/api/v1/auth/register', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization:  `Bearer ${token}`,
         },
         body: JSON.stringify({
-          email:             trimmedEmail,
-          name:              trimmedName,
+          username: trimmedEmail,
+          password: trimmedPassword,
           role,
-          temporaryPassword: trimmedPassword,
-          // TODO: backend may use 'password' or 'tempPassword' instead — confirm field name
-        } satisfies CreateUserRequest),
+        } satisfies RegisterStaffRequest),
       });
 
       if (!res.ok) {
@@ -159,26 +144,16 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
         return;
       }
 
-      // TODO: Confirm that backend echoes temporaryPassword in response.
-      // If it doesn't, we fall back to the locally known trimmedPassword.
-      const data = await res.json() as CreateUserResponse;
-      const displayPassword = data.temporaryPassword ?? trimmedPassword;
+      const displayPassword = trimmedPassword;
 
       setCreatedCreds({
-        email:             data.email,
-        role:              data.role,
+        email:             trimmedEmail,
+        role,
         temporaryPassword: displayPassword,
       });
       setPhase('success');
 
-      // Notify parent to prepend new user — modal stays open in success phase
-      onSuccess({
-        id:        data.id,
-        name:      data.name,
-        email:     data.email,
-        role:      data.role,
-        createdAt: data.createdAt,
-      });
+      onSuccess();
     } catch {
       setError('Сетевая ошибка. Проверьте соединение.');
     } finally {
@@ -319,14 +294,6 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
                   </button>
                 </div>
               </div>
-
-              {/*
-               * TODO: Confirm with backend before production:
-               *   1. POST /api/v1/admin/users — correct endpoint?
-               *   2. Request field 'temporaryPassword' — correct name? (may be 'password' / 'tempPassword')
-               *   3. Does response echo back temporaryPassword?
-               *   4. Password policy enforced server-side? (frontend has no strength meter)
-               */}
 
               {error !== null && (
                 <p className={styles.formError} role="alert" aria-live="polite">

@@ -39,7 +39,9 @@ const UserRow = memo(function UserRow({
   onEdit,
   onDelete,
 }: UserRowProps) {
-  const isSelf = user.id === currentUserId;
+  const isSelf =
+    currentUserId !== null &&
+    (user.id === currentUserId || user.email === currentUserId);
 
   return (
     <div
