@@ -15,6 +15,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
+import { staffAuthedFetch } from '@/auth/staffAuthedFetch';
 import CodeViewer from '@/components/CodeViewer';
 import NotesPanel from '@/components/NotesPanel';
 import VerdictModal from '@/components/VerdictModal';
@@ -49,9 +50,8 @@ export default function InterviewerRoomPage() {
     if (!idRoom || !resolvedToken) return;
     void (async () => {
       try {
-        await fetch(`/api/v1/rooms/start/${idRoom}`, {
+        await staffAuthedFetch(`/api/v1/rooms/start/${idRoom}`, {
           method:  'PATCH',
-          headers: { Authorization: `Bearer ${resolvedToken}` },
         });
       } catch {
         // Non-fatal — room may already be ACTIVE or WS still works.

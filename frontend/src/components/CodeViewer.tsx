@@ -17,6 +17,7 @@ import {
   useInterviewerJavaSnapshots,
   INTERVIEWER_SNAPSHOT_INTERVAL_MS,
 } from '@/hooks/useInterviewerJavaSnapshots';
+import { staffAuthedFetch } from '@/auth/staffAuthedFetch';
 import { cursorDecorationKey } from '@/utils/cursorDecorationKey';
 import { defineNeoTheme, NEO_THEME_NAME } from '@/styles/monacoTheme';
 import styles from './CodeViewer.module.css';
@@ -182,9 +183,7 @@ export default function CodeViewer({
   useEffect(() => {
     async function fetchInitialCode() {
       try {
-        const res = await fetch(`/api/v1/rooms/${idRoom}/code/latest`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await staffAuthedFetch(`/api/v1/rooms/${idRoom}/code/latest`);
         if (!res.ok) return;
         // Real API: { textCode, language }  Mock API: { textContent, idLanguage }
         const data = await res.json() as {

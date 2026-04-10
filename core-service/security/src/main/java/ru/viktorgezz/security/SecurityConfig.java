@@ -92,6 +92,8 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth ->
                         auth
+                                // CORS preflight не содержит Authorization; иначе OPTIONS /api/v1/rooms → 401 в браузере.
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .requestMatchers(PUBLIC_URLS).permitAll()
                                 .requestMatchers(SWAGGER_URLS).permitAll()
                                 .requestMatchers(SUPERUSER_URLS).hasAnyRole("SUPERUSER")
