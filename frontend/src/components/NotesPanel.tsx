@@ -72,6 +72,7 @@ export interface NotesPanelProps {
   onFinish: () => void; // opens VerdictModal
   /** Вставить условие задачи в конец редактора кода (интервьюер). */
   onAppendTaskStatement?: (statement: string) => void;
+  onNoteAdded?: () => void;
 }
 
 export default function NotesPanel({
@@ -79,6 +80,7 @@ export default function NotesPanel({
   token,
   onFinish,
   onAppendTaskStatement,
+  onNoteAdded,
 }: NotesPanelProps) {
   const [notes,              setNotes]              = useState<NoteResponse[]>([]);
   const [noteInput,          setNoteInput]          = useState('');
@@ -189,6 +191,7 @@ export default function NotesPanel({
         if (n) {
           setNotes((prev) => [...prev, n]);
         }
+        onNoteAdded?.();
         // Scroll to bottom after React re-renders the new row
         requestAnimationFrame(() => {
           const list = notesListRef.current;

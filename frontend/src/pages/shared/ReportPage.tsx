@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/useAuth';
 import { analyticsApiUrl } from '@/api/analyticsClient';
+import CodeHistoryPlayer from '@/components/CodeHistoryPlayer';
 import {
   normalizeCandidateReport,
   normalizeAiSummary,
@@ -148,6 +149,7 @@ export default function ReportPage() {
   const [aiSummary, setAiSummary] = useState<AISummaryPayload>(EMPTY_AI);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [backendDuration, setBackendDuration] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token || !idRoom) {
@@ -188,6 +190,16 @@ export default function ReportPage() {
           if (!cancelled) setAiSummary(normalizeAiSummary(rawAi));
         } else if (!cancelled) {
           setAiSummary(EMPTY_AI);
+        }
+
+        try {
+          const durationRes = await fetch(`/api/v1/rooms/${idRoom}/duration`, { headers });
+          if (durationRes.ok && !cancelled) {
+            const data: any = await durationRes.json();
+            if (data?.duration) setBackendDuration(data.duration);
+          }
+        } catch {
+          // ignore duration fetch error
         }
       } catch {
         if (!cancelled) {
@@ -393,7 +405,9 @@ export default function ReportPage() {
         </div>
         <div className={styles.metricCard}>
           <span className={styles.metricLabel}>Время интервью</span>
-          <span className={styles.metricValue}>{formatInterviewDurationLabel(interviewDurationMin)}</span>
+          <span className={styles.metricValue}>
+            {backendDuration || formatInterviewDurationLabel(interviewDurationMin)}
+          </span>
         </div>
         <div className={styles.metricCard}>
           <span className={styles.metricLabel}>Z-Score / Перцентиль</span>
@@ -610,6 +624,12 @@ export default function ReportPage() {
           </div>
         </section>
       </div>
+
+      {/* ── Code history player ───────────────────────────────────────── */}
+      <section className={styles.codeHistorySection}>
+        <h3 className={styles.sectionTitle}>История кода</h3>
+        <CodeHistoryPlayer idRoom={idRoom} token={token ?? ''} />
+      </section>
 
     </div>
   );

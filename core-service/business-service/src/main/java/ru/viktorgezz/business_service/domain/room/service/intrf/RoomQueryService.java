@@ -3,6 +3,7 @@ package ru.viktorgezz.business_service.domain.room.service.intrf;
 import org.springframework.data.domain.Page;
 import ru.viktorgezz.business_service.domain.room.RoomStatus;
 import ru.viktorgezz.business_service.domain.room.dto.JoinInfoResponse;
+import ru.viktorgezz.business_service.domain.room.dto.RoomDurationResponse;
 import ru.viktorgezz.business_service.domain.room.dto.RoomSummaryResponse;
 
 import java.util.UUID;
@@ -46,4 +47,12 @@ public interface RoomQueryService {
      * @return сводная информация о комнате
      */
     RoomSummaryResponse getRoomSummary(UUID idRoom);
+
+    /**
+     * Возвращает форматированную строку с продолжительностью собеседования.
+     *
+     * @param idRoom идентификатор комнаты
+     * @return DTO с продолжительностью в минутах и секундах
+     */
+    RoomDurationResponse getRoomDuration(UUID idRoom);
 }

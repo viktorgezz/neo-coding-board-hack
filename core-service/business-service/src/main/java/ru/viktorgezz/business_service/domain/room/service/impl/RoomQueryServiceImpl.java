@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import ru.viktorgezz.business_service.domain.room.Room;
 import ru.viktorgezz.business_service.domain.room.RoomStatus;
 import ru.viktorgezz.business_service.domain.room.dto.JoinInfoResponse;
+import ru.viktorgezz.business_service.domain.room.dto.RoomDurationResponse;
 import ru.viktorgezz.business_service.domain.room.dto.RoomSummaryResponse;
 import ru.viktorgezz.business_service.domain.room.mapper.RoomMapper;
 import ru.viktorgezz.business_service.domain.room.repo.RoomPagingRepo;
@@ -18,6 +19,8 @@ import ru.viktorgezz.business_service.domain.user.util.CurrentUserUtils;
 import ru.viktorgezz.business_service.exception.BusinessException;
 import ru.viktorgezz.business_service.exception.ErrorCode;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -72,5 +75,37 @@ public class RoomQueryServiceImpl implements RoomQueryService {
         final Room room = roomRepo.findById(idRoom)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND, idRoom));
         return RoomMapper.toSummary(room);
+    }
+
+    @Override
+    public RoomDurationResponse getRoomDuration(UUID idRoom) {
+        final Room room = roomRepo.findById(idRoom)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND, idRoom));
+
+        Instant start = room.getDateStart();
+        Instant end = room.getDateEnd();
+
+        if (start == null) {
+            return new RoomDurationResponse("0 с");
+        }
+
+        if (end == null) {
+            end = Instant.now();
+        }
+
+        long seconds = Duration.between(start, end).getSeconds();
+        long m = seconds / 60;
+        long s = seconds % 60;
+
+        String result;
+        if (m > 0 && s > 0) {
+            result = m + " мин " + s + " с";
+        } else if (m > 0) {
+            result = m + " мин";
+        } else {
+            result = s + " с";
+        }
+
+        return new RoomDurationResponse(result);
     }
 }

@@ -73,9 +73,9 @@ export interface CodeViewerProps {
   showCursor:       boolean;
   onConnect:        () => void;
   onError:          (msg: string) => void;
-  /** При смене nonce текст дописывается в конец модели и отправляется по WS. */
   taskStatementInsert?: TaskStatementInsertRequest | null;
   onTaskStatementInserted?: () => void;
+  snapshotTriggerTick?: number;
 }
 
 export default function CodeViewer({
@@ -88,6 +88,7 @@ export default function CodeViewer({
   onError,
   taskStatementInsert,
   onTaskStatementInserted,
+  snapshotTriggerTick = 0,
 }: CodeViewerProps) {
 
   const editorRef      = useRef<IStandaloneCodeEditor | null>(null);
@@ -120,6 +121,7 @@ export default function CodeViewer({
 
   const {
     sendSnapshot,
+    checkLengthAndSnapshot,
     isStompReady,
     stompError: stompSnapshotError,
     canSnapshot,
@@ -282,6 +284,12 @@ export default function CodeViewer({
   }, [language]);
 
   useEffect(() => {
+    if (snapshotTriggerTick > 0) {
+      sendSnapshot();
+    }
+  }, [snapshotTriggerTick, sendSnapshot]);
+
+  useEffect(() => {
     if (!taskStatementInsert) return;
     const editor = editorRef.current;
     const model  = editor?.getModel();
@@ -344,8 +352,10 @@ export default function CodeViewer({
   const handleEditorChange = useCallback<OnChange>((value) => {
     if (suppressOutboundRef.current) return;
     lastLocalEditAtRef.current = Date.now();
-    sendCode(value ?? '');
-  }, [sendCode]);
+    const currentCode = value ?? '';
+    sendCode(currentCode);
+    checkLengthAndSnapshot(currentCode.length);
+  }, [sendCode, checkLengthAndSnapshot]);
 
   const handleEditorMount = useCallback<OnMount>((editor, monaco) => {
     editorRef.current  = editor;

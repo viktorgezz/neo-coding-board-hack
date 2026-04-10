@@ -94,4 +94,10 @@ public class RoomController {
     public StartRoomResponse startRoom(@PathVariable UUID idRoom) {
         return roomCommandService.startRoom(idRoom);
     }
+
+    @Operation(summary = "Получить время от старта собеседования до его конца")
+    @GetMapping("/{idRoom}/duration")
+    public RoomDurationResponse getRoomDuration(@PathVariable UUID idRoom) {
+        return roomQueryService.getRoomDuration(idRoom);
+    }
 }

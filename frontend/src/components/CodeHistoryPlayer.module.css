@@ -1,0 +1,210 @@
+/* ── Player shell ──────────────────────────────────────────────────────── */
+
+.playerRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Loading skeleton ──────────────────────────────────────────────────── */
+
+.skeleton {
+  height: 480px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Error / empty states ─────────────────────────────────────────────── */
+
+.errorMsg {
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: rgba(160, 50, 50, 0.12);
+  border: 1px solid rgba(160, 80, 80, 0.4);
+  color: #e8a0a0;
+  font-size: 13px;
+}
+
+.emptyMsg {
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: rgba(96, 96, 160, 0.08);
+  border: 1px solid rgba(96, 96, 160, 0.25);
+  color: #6060a0;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ── Meta row (snapshot #N of M · details) ────────────────────────────── */
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 2px;
+  font-size: 12px;
+  color: #6060a0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.metaBadge {
+  font-size: 12px;
+  color: #a0a0c8;
+}
+
+.metaBadge strong {
+  color: #c0c0e0;
+  font-variant-numeric: tabular-nums;
+}
+
+.metaDot {
+  color: rgba(96, 96, 160, 0.5);
+  user-select: none;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.metaLabel {
+  color: #4a4a7a;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Controls row (prev · slider · next) ──────────────────────────────── */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px 12px;
+}
+
+/* ── Nav buttons ──────────────────────────────────────────────────────── */
+
+.navBtn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid rgba(123, 158, 166, 0.35);
+  background: rgba(123, 158, 166, 0.08);
+  color: #7B9EA6;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.navBtn:hover:not(:disabled) {
+  background: rgba(123, 158, 166, 0.18);
+  border-color: rgba(123, 158, 166, 0.6);
+  color: #a8ccd4;
+}
+
+.navBtn:active:not(:disabled) {
+  background: rgba(123, 158, 166, 0.28);
+}
+
+.navBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Range slider ─────────────────────────────────────────────────────── */
+
+.slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  accent-color: #7B9EA6;
+}
+
+/* Webkit thumb */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7B9EA6;
+  border: 2px solid #0d0d14;
+  box-shadow: 0 0 0 1px rgba(123, 158, 166, 0.4);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: #9bbec8;
+  transform: scale(1.15);
+}
+
+/* Firefox thumb */
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #7B9EA6;
+  border: 2px solid #0d0d14;
+  box-shadow: 0 0 0 1px rgba(123, 158, 166, 0.4);
+  cursor: pointer;
+}
+
+/* Webkit track */
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(123, 158, 166, 0.18);
+}
+
+/* Firefox track */
+.slider::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(123, 158, 166, 0.18);
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid #7B9EA6;
+  outline-offset: 2px;
+}
+
+/* ── Monaco editor wrapper ────────────────────────────────────────────── */
+
+.editorWrap {
+  height: 420px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.editorFallback {
+  height: 100%;
+  background: #0d0d14;
+}

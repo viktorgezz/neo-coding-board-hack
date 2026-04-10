@@ -36,6 +36,7 @@ export default function InterviewerRoomPage() {
   const [language,    setLanguage]    = useState('plaintext');
   const [showCursor,  setShowCursor]  = useState(true);
   const [taskInsertRequest, setTaskInsertRequest] = useState<{ nonce: number; text: string } | null>(null);
+  const [snapshotTriggerTick, setSnapshotTriggerTick] = useState(0);
 
   const handleVerdictConfirmed = useCallback(() => {
     navigate(`/interviewer/sessions/${idRoom}/report`, { replace: true });
@@ -50,6 +51,10 @@ export default function InterviewerRoomPage() {
 
   const clearTaskInsert = useCallback(() => {
     setTaskInsertRequest(null);
+  }, []);
+
+  const handleNoteAdded = useCallback(() => {
+    setSnapshotTriggerTick((n) => n + 1);
   }, []);
 
   const resolvedToken = token ?? '';
@@ -142,6 +147,7 @@ export default function InterviewerRoomPage() {
             onError={handleWsError}
             taskStatementInsert={taskInsertRequest}
             onTaskStatementInserted={clearTaskInsert}
+            snapshotTriggerTick={snapshotTriggerTick}
           />
         </div>
 
@@ -152,6 +158,7 @@ export default function InterviewerRoomPage() {
             token={resolvedToken}
             onFinish={() => setIsModalOpen(true)}
             onAppendTaskStatement={handleAppendTaskStatement}
+            onNoteAdded={handleNoteAdded}
           />
         </div>
 

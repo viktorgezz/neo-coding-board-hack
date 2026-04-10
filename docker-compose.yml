@@ -5,6 +5,8 @@ services:
     env_file:
       - path: ./deploy/postgres/.env
         required: true
+    ports:
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./deploy/postgres/init-multiple-dbs.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
@@ -80,6 +82,8 @@ services:
       context: ./core-service
       dockerfile: Dockerfile
     container_name: java-business-app
+    ports:
+      - "8080:8080"
     env_file:
       - path: ./core-service/.env
         required: true

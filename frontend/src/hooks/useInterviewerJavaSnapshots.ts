@@ -27,9 +27,10 @@ export interface UseInterviewerJavaSnapshotsParams {
 
 export interface UseInterviewerJavaSnapshotsResult {
   sendSnapshot: () => void;
+  checkLengthAndSnapshot: (len: number) => void;
   isStompReady: boolean;
-  stompError:   string | null;
-  canSnapshot:  boolean;
+  stompError: string | null;
+  canSnapshot: boolean;
 }
 
 export function useInterviewerJavaSnapshots({
@@ -62,6 +63,7 @@ export function useInterviewerJavaSnapshots({
 
   const userId = decodeJwtNumericUserId(token);
   const canSnapshot = userId !== null;
+  const lastLengthRef = useRef<number>(0);
 
   useEffect(() => {
     userIdRef.current = userId;
@@ -73,9 +75,12 @@ export function useInterviewerJavaSnapshots({
     const room = idRoomRef.current;
     if (!client?.connected || uid === null) return;
 
+    const code = getCodeRef.current();
+    lastLengthRef.current = code.length;
+
     const body = JSON.stringify({
       idRoom: room,
-      textCode: getCodeRef.current(),
+      textCode: code,
       language: languageRef.current || '',
       idCandidate: null,
       idInterviewer: uid,
@@ -149,8 +154,20 @@ export function useInterviewerJavaSnapshots({
     publishSnapshot();
   }, [publishSnapshot]);
 
+  const checkLengthAndSnapshot = useCallback((len: number) => {
+    const last = lastLengthRef.current;
+    if (last === 0) {
+      lastLengthRef.current = len;
+      return;
+    }
+    if (len >= last * 2 || len <= last / 2) {
+      publishSnapshot();
+    }
+  }, [publishSnapshot]);
+
   return {
     sendSnapshot,
+    checkLengthAndSnapshot,
     isStompReady,
     stompError,
     canSnapshot,
