@@ -1,9 +1,9 @@
 /**
  * VerdictModal — two-step interview conclusion flow.
  *
- * Step 1: Four star-rating criteria (System Design, Code Readability,
- *         Communication Skills, Coachability). "Далее →" is blocked until
- *         all four scores are 1-5. Going back from step 2 preserves scores.
+ * Step 1: Четыре критерия со звёздами (проектирование, читаемость кода,
+ *         коммуникация, обучаемость). "Далее →" — пока все оценки 1–5.
+ *         Возврат со шага 2 сохраняет введённые оценки.
  *
  * Step 2: Read-only score summary + binary verdict selector (ПРОЙДЕНО /
  *         НЕ ПРОЙДЕНО). Confirm fires two sequential API calls:
@@ -60,10 +60,18 @@ interface FinishBody {
 // ---------------------------------------------------------------------------
 
 const CRITERIA_LABELS: Record<keyof AssessmentScores, string> = {
-  systemDesign:        'System Design',
-  codeReadability:     'Code Readability',
-  communicationSkills: 'Communication Skills',
-  coachability:        'Coachability',
+  systemDesign:        'Проектирование и архитектура',
+  codeReadability:     'Читаемость кода',
+  communicationSkills: 'Коммуникация',
+  coachability:        'Обучаемость',
+};
+
+/** Короткие подписи для сводки на шаге 2 */
+const CRITERIA_SUMMARY_SHORT: Record<keyof AssessmentScores, string> = {
+  systemDesign:        'Проектирование',
+  codeReadability:     'Читаемость кода',
+  communicationSkills: 'Коммуникация',
+  coachability:        'Обучаемость',
 };
 
 const INITIAL_SCORES: AssessmentScores = {
@@ -205,7 +213,11 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
 
   // ── Score summary for step 2 ─────────────────────────────────────────────
 
-  const summaryRow = `SD: ${scores.systemDesign} · CR: ${scores.codeReadability} · CS: ${scores.communicationSkills} · CO: ${scores.coachability}`;
+  const summaryRow =
+    `${CRITERIA_SUMMARY_SHORT.systemDesign}: ${scores.systemDesign} · ` +
+    `${CRITERIA_SUMMARY_SHORT.codeReadability}: ${scores.codeReadability} · ` +
+    `${CRITERIA_SUMMARY_SHORT.communicationSkills}: ${scores.communicationSkills} · ` +
+    `${CRITERIA_SUMMARY_SHORT.coachability}: ${scores.coachability}`;
 
   // ── Portal contents ──────────────────────────────────────────────────────
 
@@ -292,7 +304,7 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
             <div className={styles.scoreSummary}>
               <div className={styles.summaryRow}>{summaryRow}</div>
               <div className={styles.summaryCaption}>
-                SD = System Design · CR = Code Readability · CS = Communication · CO = Coachability
+                Шкала по каждому критерию: от 1 до 5
               </div>
             </div>
 

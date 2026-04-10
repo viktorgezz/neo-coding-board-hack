@@ -69,12 +69,15 @@ export interface NotesPanelProps {
   idRoom:   string;
   token:    string;
   onFinish: () => void; // opens VerdictModal
+  /** Вставить условие задачи в конец редактора кода (интервьюер). */
+  onAppendTaskStatement?: (statement: string) => void;
 }
 
 export default function NotesPanel({
   idRoom,
   token,
   onFinish,
+  onAppendTaskStatement,
 }: NotesPanelProps) {
   const [notes,              setNotes]              = useState<NoteResponse[]>([]);
   const [noteInput,          setNoteInput]          = useState('');
@@ -328,6 +331,15 @@ export default function NotesPanel({
                 </div>
                 {task.statement && (
                   <div className={styles.taskStatement}>{task.statement}</div>
+                )}
+                {onAppendTaskStatement && task.statement?.trim() && (
+                  <button
+                    type="button"
+                    className={styles.insertTaskBtn}
+                    onClick={() => onAppendTaskStatement(task.statement)}
+                  >
+                    В редактор
+                  </button>
                 )}
               </div>
             ))}

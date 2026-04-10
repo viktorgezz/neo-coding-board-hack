@@ -261,10 +261,12 @@ function mockApiPlugin() {
         // ── POST /api/v1/admin/users — создать пользователя ──────────────────
         if (method === 'POST' && path === '/api/v1/admin/users') {
           const body = await readBody(req);
+          const login = String(body.username ?? body.email ?? '');
           return json({
             id:                `user-${Date.now()}`,
             name:              body.name,
-            email:             body.email,
+            username:          login,
+            email:             login,
             role:              body.role,
             temporaryPassword: body.temporaryPassword,
             createdAt:         new Date().toISOString(),

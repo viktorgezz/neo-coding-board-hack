@@ -225,13 +225,6 @@ export default function AdminUsersPage() {
         >
           Создать пользователя
         </button>
-        <button
-          type="button"
-          className={styles.manageTaskBankBtn}
-          onClick={() => navigate('/task-bank/manage')}
-        >
-          Управление задачами
-        </button>
       </div>
 
       {/* ── Table header ── */}

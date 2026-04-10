@@ -47,26 +47,6 @@
   color: var(--text-primary);
 }
 
-.manageTaskBankBtn {
-  height: 34px;
-  padding: 0 14px;
-  background: transparent;
-  border: var(--border-default);
-  border-radius: var(--radius-input);
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 500;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.manageTaskBankBtn:hover {
-  border-color: var(--text-muted);
-  color: var(--text-secondary);
-}
-
 /* ── Table header ────────────────────────────────────────────────────────── */
 .tableHeader {
   display: grid;

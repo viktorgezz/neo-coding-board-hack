@@ -2,7 +2,7 @@
  * CreateUserModal — modal for provisioning new HR/INTERVIEWER accounts.
  *
  * Two phases:
- *   'form'    — four fields (name, email, role toggle, password) + submit.
+ *   'form'    — four fields (name, login, role toggle, password) + submit.
  *   'success' — credential display with one-time password + copy button.
  *
  * The modal stays open after success so the admin can copy credentials.
@@ -33,7 +33,7 @@ interface RegisterStaffRequest {
 }
 
 interface CreatedCredentials {
-  email:             string;
+  login:             string;
   role:              'HR' | 'INTERVIEWER';
   temporaryPassword: string;
 }
@@ -82,7 +82,7 @@ interface ContentProps {
 function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
   // ── Form state ────────────────────────────────────────────────────────────
   const [name,              setName]              = useState('');
-  const [email,             setEmail]             = useState('');
+  const [login,             setLogin]             = useState('');
   const [role,              setRole]              = useState<'HR' | 'INTERVIEWER'>('INTERVIEWER');
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [showPassword,      setShowPassword]      = useState(false);
@@ -105,18 +105,18 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const canSubmit =
-    email.trim().length > 0 &&
+    login.trim().length > 0 &&
     name.trim().length > 0 &&
     temporaryPassword.trim().length > 0 &&
     !isSubmitting;
 
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleCreate = useCallback(async () => {
-    const trimmedEmail    = email.trim();
+    const trimmedLogin    = login.trim();
     const trimmedName     = name.trim();
     const trimmedPassword = temporaryPassword.trim();
 
-    if (!trimmedEmail || !trimmedName || !trimmedPassword) return;
+    if (!trimmedLogin || !trimmedName || !trimmedPassword) return;
 
     setIsSubmitting(true);
     setError(null);
@@ -129,7 +129,7 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
           Authorization:  `Bearer ${token}`,
         },
         body: JSON.stringify({
-          username: trimmedEmail,
+          username: trimmedLogin,
           password: trimmedPassword,
           role,
         } satisfies RegisterStaffRequest),
@@ -138,7 +138,7 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
       if (!res.ok) {
         const message =
           res.status === 409
-            ? 'Пользователь с таким email уже существует.'
+            ? 'Пользователь с таким логином уже существует.'
             : `Ошибка создания (${res.status}). Проверьте данные.`;
         setError(message);
         return;
@@ -147,7 +147,7 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
       const displayPassword = trimmedPassword;
 
       setCreatedCreds({
-        email:             trimmedEmail,
+        login:             trimmedLogin,
         role,
         temporaryPassword: displayPassword,
       });
@@ -159,7 +159,7 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [email, name, temporaryPassword, role, token, onSuccess]);
+  }, [login, name, temporaryPassword, role, token, onSuccess]);
 
   // ── Copy password ─────────────────────────────────────────────────────────
   const handleCopyPassword = useCallback(async () => {
@@ -231,17 +231,17 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
                 />
               </div>
 
-              {/* Email */}
+              {/* Логин (username в системе) */}
               <div className={styles.fieldGroup}>
-                <label className={styles.label} htmlFor="cu-email">Email</label>
+                <label className={styles.label} htmlFor="cu-login">Логин</label>
                 <input
-                  id="cu-email"
-                  type="email"
+                  id="cu-login"
+                  type="text"
                   className={styles.input}
-                  placeholder="ivan@company.com"
-                  autoComplete="off"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Например: ivan.petrov"
+                  autoComplete="username"
+                  value={login}
+                  onChange={(e) => setLogin(e.target.value)}
                 />
               </div>
 
@@ -332,8 +332,8 @@ function CreateUserModalContent({ token, onClose, onSuccess }: ContentProps) {
 
             <div className={styles.credentialBlock}>
               <div className={styles.credRow}>
-                <span className={styles.credLabel}>Email</span>
-                <span className={styles.credValue}>{createdCreds?.email}</span>
+                <span className={styles.credLabel}>Логин</span>
+                <span className={styles.credValue}>{createdCreds?.login}</span>
               </div>
               <div className={styles.credRow}>
                 <span className={styles.credLabel}>Роль</span>

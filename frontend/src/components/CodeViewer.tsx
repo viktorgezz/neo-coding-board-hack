@@ -58,6 +58,12 @@ const MONACO_OPTIONS: Parameters<typeof MonacoEditor>[0]['options'] = {
 
 const EDITOR_FALLBACK = <div className={styles.editorFallback} />;
 
+/** Запрос вставки условия задачи в конец файла (банк задач в NotesPanel). */
+export interface TaskStatementInsertRequest {
+  nonce: number;
+  text:  string;
+}
+
 export interface CodeViewerProps {
   idRoom:           string;
   token:            string;
@@ -66,6 +72,9 @@ export interface CodeViewerProps {
   showCursor:       boolean;
   onConnect:        () => void;
   onError:          (msg: string) => void;
+  /** При смене nonce текст дописывается в конец модели и отправляется по WS. */
+  taskStatementInsert?: TaskStatementInsertRequest | null;
+  onTaskStatementInserted?: () => void;
 }
 
 export default function CodeViewer({
@@ -76,6 +85,8 @@ export default function CodeViewer({
   showCursor,
   onConnect,
   onError,
+  taskStatementInsert,
+  onTaskStatementInserted,
 }: CodeViewerProps) {
 
   const editorRef      = useRef<IStandaloneCodeEditor | null>(null);
@@ -270,6 +281,55 @@ export default function CodeViewer({
       monacoRef.current.editor.setModelLanguage(model, toMonacoLanguage(language));
     }
   }, [language]);
+
+  useEffect(() => {
+    if (!taskStatementInsert) return;
+    const editor = editorRef.current;
+    const model  = editor?.getModel();
+    if (!editor || !model) return;
+
+    const statement = taskStatementInsert.text.trim();
+    if (!statement) {
+      onTaskStatementInserted?.();
+      return;
+    }
+
+    const eol       = model.getEOL();
+    const lineCount = model.getLineCount();
+    const lastCol   = model.getLineMaxColumn(lineCount);
+    const lastLine  = model.getLineContent(lineCount);
+
+    let insertText = '';
+    if (model.getValueLength() > 0) {
+      insertText = lastLine.length > 0 ? eol + eol : eol;
+    }
+    insertText += statement;
+    if (!insertText.endsWith(eol)) {
+      insertText += eol;
+    }
+
+    editor.executeEdits('task-bank-statement', [
+      {
+        range: {
+          startLineNumber: lineCount,
+          startColumn:     lastCol,
+          endLineNumber:   lineCount,
+          endColumn:       lastCol,
+        },
+        text:             insertText,
+        forceMoveMarkers: true,
+      },
+    ]);
+
+    const endLine = model.getLineCount();
+    const endCol  = model.getLineMaxColumn(endLine);
+    editor.setPosition({ lineNumber: endLine, column: endCol });
+    editor.revealPositionInCenter({ lineNumber: endLine, column: endCol });
+
+    lastLocalEditAtRef.current = Date.now();
+    sendCode(model.getValue());
+    onTaskStatementInserted?.();
+  }, [taskStatementInsert, editorMountTick, sendCode, onTaskStatementInserted]);
 
   const prevLanguageRef = useRef(language);
   useEffect(() => {

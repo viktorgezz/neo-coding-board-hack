@@ -1,0 +1,14 @@
+{
+  "name": "neo-coding-board-hack",
+  "private": true,
+  "description": "Корень репозитория: фронтенд в ./frontend",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w neo-coding-board",
+    "build": "npm run build -w neo-coding-board",
+    "preview": "npm run preview -w neo-coding-board",
+    "typecheck": "npm run typecheck -w neo-coding-board"
+  }
+}

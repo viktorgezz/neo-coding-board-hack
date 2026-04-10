@@ -34,6 +34,7 @@ export default function InterviewerRoomPage() {
   const [wsStatus,    setWsStatus]    = useState<'connecting' | 'live' | 'disconnected'>('connecting');
   const [language,    setLanguage]    = useState('plaintext');
   const [showCursor,  setShowCursor]  = useState(true);
+  const [taskInsertRequest, setTaskInsertRequest] = useState<{ nonce: number; text: string } | null>(null);
 
   const handleVerdictConfirmed = useCallback(() => {
     navigate(`/interviewer/sessions/${idRoom}/report`, { replace: true });
@@ -41,6 +42,14 @@ export default function InterviewerRoomPage() {
 
   const handleWsConnect = useCallback(() => { setWsStatus('live');         }, []);
   const handleWsError   = useCallback(() => { setWsStatus('disconnected'); }, []);
+
+  const handleAppendTaskStatement = useCallback((text: string) => {
+    setTaskInsertRequest({ nonce: Date.now(), text });
+  }, []);
+
+  const clearTaskInsert = useCallback(() => {
+    setTaskInsertRequest(null);
+  }, []);
 
   const resolvedToken = token ?? '';
 
@@ -131,6 +140,8 @@ export default function InterviewerRoomPage() {
             showCursor={showCursor}
             onConnect={handleWsConnect}
             onError={handleWsError}
+            taskStatementInsert={taskInsertRequest}
+            onTaskStatementInserted={clearTaskInsert}
           />
         </div>
 
@@ -140,6 +151,7 @@ export default function InterviewerRoomPage() {
             idRoom={idRoom}
             token={resolvedToken}
             onFinish={() => setIsModalOpen(true)}
+            onAppendTaskStatement={handleAppendTaskStatement}
           />
         </div>
 

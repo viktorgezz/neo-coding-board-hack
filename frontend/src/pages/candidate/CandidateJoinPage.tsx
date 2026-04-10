@@ -202,7 +202,7 @@ export default function CandidateJoinPage() {
               )}
             </div>
 
-            <h1 className={styles.joinTitle}>Введите ваше имя</h1>
+            <h1 className={styles.joinTitle}>Введите ваше ФИО</h1>
 
             <form
               className={styles.joinForm}

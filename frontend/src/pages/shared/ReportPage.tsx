@@ -264,8 +264,8 @@ export default function ReportPage() {
 
   const radarData = useMemo(
     () => [
-      { metric: 'System Design', value: report.radarMetrics.systemDesign },
-      { metric: 'Читаемость', value: report.radarMetrics.codeReadability },
+      { metric: 'Проектирование', value: report.radarMetrics.systemDesign },
+      { metric: 'Читаемость кода', value: report.radarMetrics.codeReadability },
       { metric: 'Коммуникация', value: report.radarMetrics.communication },
       { metric: 'Обучаемость', value: report.radarMetrics.coachability },
       { metric: 'Техника', value: report.radarMetrics.technicalScore },
@@ -601,12 +601,12 @@ export default function ReportPage() {
         <section className={styles.sectionCard}>
           <h3 className={styles.sectionTitle}>Ручные оценки интервьюера</h3>
           <div className={styles.kvList}>
-            <div className={styles.kvRow}><span className={styles.kvKey}>Оценка решения (System Design)</span><span className={styles.kvValue}>{report.radarMetrics.systemDesign}/5</span></div>
+            <div className={styles.kvRow}><span className={styles.kvKey}>Проектирование и архитектура</span><span className={styles.kvValue}>{report.radarMetrics.systemDesign}/5</span></div>
             <div className={styles.kvRow}><span className={styles.kvKey}>Читаемость кода</span><span className={styles.kvValue}>{report.radarMetrics.codeReadability}/5</span></div>
             <div className={styles.kvRow}><span className={styles.kvKey}>Коммуникация</span><span className={styles.kvValue}>{report.radarMetrics.communication}/5</span></div>
-            <div className={styles.kvRow}><span className={styles.kvKey}>Обучаемость (Coachability)</span><span className={styles.kvValue}>{report.radarMetrics.coachability}/5</span></div>
+            <div className={styles.kvRow}><span className={styles.kvKey}>Обучаемость</span><span className={styles.kvValue}>{report.radarMetrics.coachability}/5</span></div>
             <div className={styles.kvRow}><span className={styles.kvKey}>Технический балл</span><span className={styles.kvValue}>{report.radarMetrics.technicalScore}/5</span></div>
-            <div className={styles.kvRow}><span className={styles.kvKey}>Целостность (Integrity)</span><span className={styles.kvValue}>{report.radarMetrics.integrity}/5</span></div>
+            <div className={styles.kvRow}><span className={styles.kvKey}>Целостность</span><span className={styles.kvValue}>{report.radarMetrics.integrity}/5</span></div>
           </div>
         </section>
       </div>
