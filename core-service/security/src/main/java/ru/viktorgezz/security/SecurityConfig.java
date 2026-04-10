@@ -38,7 +38,6 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_URLS = {
             "/api/v1/auth/login",
-            "/api/v1/auth/register",
             "/api/v1/auth/refresh",
             "/api/v1/ui/auth/**",
             "/api/v1/candidate/register",
@@ -72,11 +71,15 @@ public class SecurityConfig {
     };
 
     private static final String[] HR_URLS = {
-            "/api/v1/rooms/all"
+            "/api/v1/rooms/all",
+            "/api/v1/users/candidates",
+            "/api/v1/users/*"
     };
 
     private static final String[] SUPERUSER_URLS = {
-            "/api/v1/auth/register"
+            "/api/v1/auth/register",
+            "/api/v1/users/staff",
+
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
