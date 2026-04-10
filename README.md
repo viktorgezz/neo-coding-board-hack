@@ -38,7 +38,7 @@
 | Каталог | Назначение | Документация |
 |--------|------------|--------------|
 | [core-service](core-service/) | Основной **REST API** (Spring Boot): аутентификация JWT, комнаты, код, заметки, интеграция с остальными частями платформы. В Docker — сервис `app`, контейнер `java-business-app`. | [core-service/README.md](core-service/README.md) |
-| [frontend](frontend/) | **SPA**: Vite, React 18, TypeScript, Monaco Editor, STOMP для WebSocket, React Query. Статика отдаётся **nginx** в compose; в dev — Vite dev server с прокси (см. ниже). | отдельного README нет — `package.json`, [frontend/vite.config.ts](frontend/vite.config.ts), [frontend/nginx/default.conf](frontend/nginx/default.conf) |
+| [frontend](frontend/) | **SPA**: Vite, React 18, TypeScript, Monaco Editor, STOMP для WebSocket, React Query. Статика отдаётся **nginx** в compose; в dev — Vite dev server с прокси (см. ниже). | [frontend/Readme.md](frontend/Readme.md) |
 | [AnaliticsService](AnaliticsService/) | **Аналитика** (FastAPI): история событий, метрики, отчёт кандидата, AI-резюме. Публичный ключ JWT монтируется из `AnaliticsService/keys/`. | [AnaliticsService/README.md](AnaliticsService/README.md) |
 | [TasksBankService](TasksBankService/) | **Банк задач**: категории и задачи, API для фронта. Использует тот же публичный ключ, что и аналитика. | [TasksBankService/README.md](TasksBankService/README.md) |
 | [WSCodeService](WSCodeService/) | **WebSocket** для текста кода в комнате (отдельный микросервис). | [WSCodeService/README.md](WSCodeService/README.md) |
