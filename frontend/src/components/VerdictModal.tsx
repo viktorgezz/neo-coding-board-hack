@@ -23,6 +23,7 @@
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { analyticsApiUrl } from '@/api/analyticsClient';
+import { staffAuthedFetch } from '@/auth/staffAuthedFetch';
 import { pushSessionHistoryToAnalytics } from '@/api/analyticsSessionHistory';
 import StarRating from './StarRating';
 import StepIndicator from './StepIndicator';
@@ -153,11 +154,11 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
 
     // ── Step A: POST assessment (some deployments omit this route) ─────────
     try {
-      const assessRes = await fetch(
+      const assessRes = await staffAuthedFetch(
         analyticsApiUrl(`/api/v1/rooms/${idRoom}/interviewer-assessment`),
         {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             systemDesign:        scores.systemDesign,
             codeReadability:     scores.codeReadability,
@@ -187,9 +188,9 @@ function VerdictModalContent({ idRoom, token, onClose, onSuccess }: ContentProps
       const codeResolution: 'PASSED' | 'REJECTED' =
         verdict === 'PASSED' ? 'PASSED' : 'REJECTED';
 
-      const finishRes = await fetch(`/api/v1/rooms/finish/${idRoom}`, {
+      const finishRes = await staffAuthedFetch(`/api/v1/rooms/finish/${idRoom}`, {
         method:  'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ codeResolution } satisfies FinishBody),
       });
       if (!finishRes.ok) {

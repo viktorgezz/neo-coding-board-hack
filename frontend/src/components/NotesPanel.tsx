@@ -19,6 +19,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { getTasksBankApiRoot } from '@/api/tasksBankClient';
+import { staffAuthedFetch } from '@/auth/staffAuthedFetch';
 import NoteRow from './NoteRow';
 import type { NoteResponse } from './NoteRow';
 import styles from './NotesPanel.module.css';
@@ -107,16 +108,14 @@ export default function NotesPanel({
   useEffect(() => {
     async function fetchNotes() {
       try {
-        const headers = { Authorization: `Bearer ${token}` };
-        let res = await fetch(
+        let res = await staffAuthedFetch(
           `/api/v1/rooms/${idRoom}/notes/paged?page=0&size=50`,
-          { headers },
         );
         if (res.ok) {
           setNotes(parseNotesPayload(await res.json()));
           return;
         }
-        res = await fetch(`/api/v1/rooms/${idRoom}/notes`, { headers });
+        res = await staffAuthedFetch(`/api/v1/rooms/${idRoom}/notes`);
         if (res.ok) setNotes(parseNotesPayload(await res.json()));
       } catch {
         // Non-fatal — notes panel degrades gracefully to empty list
@@ -130,9 +129,7 @@ export default function NotesPanel({
   useEffect(() => {
     async function fetchTaskCategories() {
       try {
-        const res = await fetch(`${TASKS_BANK_BASE_URL}/api/v1/categories`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await staffAuthedFetch(`${TASKS_BANK_BASE_URL}/api/v1/categories`);
         if (!res.ok) return;
         const data = await res.json() as CategoryRead[];
         setTaskCategories(data);
@@ -155,9 +152,7 @@ export default function NotesPanel({
         if (selectedDifficulty !== null) params.set('difficulty',   selectedDifficulty);
         const query = params.toString();
         const url   = `${TASKS_BANK_BASE_URL}/api/v1/tasks${query ? `?${query}` : ''}`;
-        const res   = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res   = await staffAuthedFetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as TaskRead[];
         setTasks(data);
@@ -182,11 +177,10 @@ export default function NotesPanel({
     setIsSubmittingNote(true);
 
     try {
-      const res = await fetch(`/api/v1/rooms/${idRoom}/notes`, {
+      const res = await staffAuthedFetch(`/api/v1/rooms/${idRoom}/notes`, {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:  `Bearer ${token}`,
         },
         body: JSON.stringify({ textContent: trimmed }),
       });
@@ -218,9 +212,8 @@ export default function NotesPanel({
     // Remove immediately — no undo during a live session
     setNotes((prev) => prev.filter((n) => n.id !== idNote));
     try {
-      await fetch(`/api/v1/rooms/${idRoom}/notes/${idNote}`, {
+      await staffAuthedFetch(`/api/v1/rooms/${idRoom}/notes/${idNote}`, {
         method:  'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
       });
     } catch {
       // Silent — optimistic delete is final
@@ -232,11 +225,10 @@ export default function NotesPanel({
       const trimmed = textContent.trim();
       if (!trimmed) return false;
       try {
-        const res = await fetch(`/api/v1/rooms/${idRoom}/notes/${idNote}`, {
+        const res = await staffAuthedFetch(`/api/v1/rooms/${idRoom}/notes/${idNote}`, {
           method:  'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            Authorization:  `Bearer ${token}`,
           },
           body: JSON.stringify({ textContent: trimmed }),
         });

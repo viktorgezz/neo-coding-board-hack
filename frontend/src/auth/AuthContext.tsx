@@ -26,6 +26,7 @@ import {
   clearStaffSessionStorage,
   readStaffSessionFromStorage,
 } from './staffSessionStorage';
+import { bindStaffFetchDeps } from './staffAuthedFetch';
 
 // ---------------------------------------------------------------------------
 // Module-level token refs
@@ -80,6 +81,8 @@ export interface AuthContextValue {
    */
   login: (username: string, password: string) => Promise<AuthRole>;
   logout: () => void;
+  /** POST /api/v1/auth/refresh — новый access, без редиректа. false если refresh невозможен. */
+  refreshSession: () => Promise<boolean>;
 }
 
 // Sentinel — distinguishes "not yet provided" from a null-valued context
@@ -164,6 +167,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // ── login ─────────────────────────────────────────────────────────────────
 
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    const refreshTok =
+      _tokenRefresh ?? readStaffSessionFromStorage()?.tokenRefresh ?? '';
+    if (!refreshTok) return false;
+    try {
+      const res = await fetch('/api/v1/auth/refresh', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ refreshToken: refreshTok }),
+      });
+      if (!res.ok) return false;
+      const raw = (await res.json()) as { access_token?: string };
+      const tokenAccess = raw.access_token ?? '';
+      if (!tokenAccess) return false;
+      const payload = decodeJWT(tokenAccess);
+      if (!payload || isTokenExpired(payload)) return false;
+      _tokenAccess = tokenAccess;
+      const displayName =
+        _userName ?? readStaffSessionFromStorage()?.name ?? '';
+      persistStaffSession(tokenAccess, refreshTok, displayName);
+      setState({
+        token:           tokenAccess,
+        role:            payload.role,
+        name:            displayName || null,
+        userId:          payload.sub,
+        isAuthenticated: true,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const login = useCallback(async (username: string, password: string): Promise<AuthRole> => {
     // apiLogin throws on non-2xx — let it propagate to the caller (LoginPage)
     const { tokenAccess, tokenRefresh, name } = await apiLogin(username, password);
@@ -204,6 +240,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setState(UNAUTHENTICATED);
   }, []);
 
+  useEffect(() => {
+    bindStaffFetchDeps(() => _tokenAccess, refreshSession);
+  }, [refreshSession]);
+
   // ── Context value — memoized to prevent needless consumer re-renders ──────
 
   const value = useMemo<AuthContextValue>(
@@ -215,8 +255,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isAuthenticated: state.isAuthenticated,
       login,
       logout,
+      refreshSession,
     }),
-    [state.token, state.role, state.name, state.userId, state.isAuthenticated, login, logout],
+    [state.token, state.role, state.name, state.userId, state.isAuthenticated, login, logout, refreshSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

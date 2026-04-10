@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/auth/useAuth';
+import { staffAuthedFetch } from '@/auth/staffAuthedFetch';
 import BackLink from '@/components/BackLink';
 import styles from './CreateInterviewPage.module.css';
 
@@ -41,7 +41,6 @@ interface CreateRoomResponse {
 // ---------------------------------------------------------------------------
 
 export default function CreateInterviewPage() {
-  const { token } = useAuth(); // stable for session lifetime, always non-null here
   const navigate  = useNavigate();
 
   // ── Form state ────────────────────────────────────────────────────────────
@@ -91,11 +90,10 @@ export default function CreateInterviewPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/v1/rooms', {
+      const res = await staffAuthedFetch('/api/v1/rooms', {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization:  `Bearer ${token ?? ''}`,
         },
         body: JSON.stringify({
           titleRoom:   trimmedTitle,
@@ -107,7 +105,9 @@ export default function CreateInterviewPage() {
         const message =
           res.status === 409
             ? 'Комната с таким названием уже существует.'
-            : `Ошибка создания комнаты (${res.status}).`;
+            : res.status === 401
+              ? 'Сессия истекла или нет доступа. Выйдите и войдите снова.'
+              : `Ошибка создания комнаты (${res.status}).`;
         setError(message);
         return;
       }

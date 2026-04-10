@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/auth/useAuth';
+import { staffAuthedFetch } from '@/auth/staffAuthedFetch';
 import SessionRow from '@/components/SessionRow';
 import type { RoomSummary } from '@/components/SessionRow';
 import Pagination from '@/components/Pagination';
@@ -69,7 +69,6 @@ const SKELETONS = Array.from({ length: SKELETON_COUNT }, (_, i) => i);
 // ---------------------------------------------------------------------------
 
 export default function SessionListPage() {
-  const { token }  = useAuth(); // always non-null inside InterviewerRoute
   const navigate   = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const listRef    = useRef<HTMLDivElement | null>(null);
@@ -92,17 +91,12 @@ export default function SessionListPage() {
   // ── Data fetch ───────────────────────────────────────────────────────────
 
   useEffect(() => {
-    // Token read once at component top — stable for the session lifetime.
-    // Not re-read inside the effect to avoid stale-closure concerns.
-    const bearerToken = token ?? '';
-
     async function fetchRooms() {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await fetch(
+        const res = await staffAuthedFetch(
           `/api/v1/rooms?page=${currentPage}&size=10`,
-          { headers: { Authorization: `Bearer ${bearerToken}` } },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as RoomListResponse;
@@ -123,9 +117,7 @@ export default function SessionListPage() {
     }
 
     void fetchRooms();
-  }, [currentPage, retryCount]); // eslint-disable-line react-hooks/exhaustive-deps
-  // token is intentionally omitted — it is stable for the session lifetime
-  // and re-reading it on change would cause an unnecessary double-fetch on login.
+  }, [currentPage, retryCount]);
 
   // ── Callbacks ────────────────────────────────────────────────────────────
 
