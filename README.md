@@ -1,247 +1,107 @@
-# NEO Coding Board Hack - Analytics Service
+# NEO Coding Board
 
+![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)
+![Spring](https://img.shields.io/badge/Spring%20Boot-3-6DB33F?logo=spring&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?logo=fastapi&logoColor=white)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?logo=sqlalchemy&logoColor=white)
-![Alembic](https://img.shields.io/badge/Alembic-Migrations-4B8BBE)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-supported-4169E1?logo=postgresql&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-supported-003B57?logo=sqlite&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
-![AI](https://img.shields.io/badge/AI-GigaChat-2E7D32)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
 
-Сервис аналитики технических интервью для Live Coding платформы.
+Платформа для проведения **технических интервью в формате live coding**: общий редактор кода с синхронизацией в реальном времени, сессии (комнаты), заметки интервьюера, метрики поведения в редакторе и **аналитические отчёты** по завершённым интервью. Есть **банк задач** для выбора условий и привязки к сессии.
 
-Назначение сервиса:
-- принимать историю интервью (снимки кода + заметки интервьюера);
-- собирать realtime-сигналы поведения кандидата (paste/tab switch);
-- строить отчеты кандидата с метриками, трендами и сравнительной статистикой;
-- генерировать AI-резюме по результатам интервью.
+### Роли
 
----
+- **Интервьюер** — создаёт и ведёт сессию, видит код кандидата, пишет заметки, завершает интервью и выставляет оценку.
+- **HR** — обзор сессий и статусов без полного админ-доступа.
+- **Администратор** — управление учётными записями персонала (staff).
+- **Кандидат** — вход по ссылке на комнату **без** общей учётной записи платформы; получает ограниченный доступ к редактору и контексту сессии.
 
-## 1) Описание
-
-### Что делает API
-
-Основные эндпоинты:
-- `POST /api/v1/rooms/{idRoom}/history` - загрузка истории сессии (базовые данные интервью);
-- `POST /api/v1/rooms/{idRoom}/metrics/increment-paste` - инкремент счетчика paste и запись события;
-- `POST /api/v1/rooms/{idRoom}/metrics/increment-tab-switch` - инкремент tab switch и запись события;
-- `POST /api/v1/rooms/{idRoom}/interviewer-assessment` - сохранение оценки интервьюера;
-- `GET /api/v1/rooms/{idRoom}/candidate-report` - сборный аналитический отчет;
-- `GET /api/v1/rooms/{idRoom}/ai-summary` - AI-резюме (сохранение и возврат).
-
-### Технологический стек
-
-- Backend: `FastAPI`, `Pydantic v2`
-- БД и ORM: `SQLAlchemy 2`, `Alembic`
-- Драйверы БД: `SQLite` (по умолчанию), `PostgreSQL` (production-ready)
-- Анализ кода:
-  - эвристический: `ast`, `javalang`, `esprima`, `bashlex`, `libclang`
-  - цикломатическая сложность: `radon` (Python), `lizard` (другие языки)
-- AI-интеграция: `GigaChat API` (OAuth + chat completions)
-- Деплой: `Docker`
+Подробные API аналитики, формулы метрик и сценарий **AI-summary (GigaChat)** описаны только в [AnaliticsService/README.md](AnaliticsService/README.md), в корне они не дублируются.
 
 ---
 
-## 2) Инструкция по запуску
+## Требования
 
-### Локально (Python)
-
-1. Перейти в директорию сервиса:
-```bash
-cd AnaliticsService
-```
-
-2. Создать и активировать виртуальное окружение:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-3. Установить зависимости:
-```bash
-pip install -r requirements.txt
-```
-
-4. Подготовить `.env`:
-```bash
-cp .env.example .env
-```
-
-Минимальные переменные:
-- `DATABASE_URL` - строка подключения (если не задано, используется `sqlite:///./analytics.db`);
-- `GIGACHAT_AUTH_KEY` - Base64 от `<client_id>:<client_secret>` (нужен для `/ai-summary`).
-
-5. Запустить API:
-```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-
-При старте автоматически выполняются миграции Alembic до `head`.
-
-### Через Docker
-
-Из директории `AnaliticsService`:
-```bash
-docker build -t neo-analytics-service .
-docker run --rm -p 8000:8000 --env-file .env neo-analytics-service
-```
+| Для чего | Минимум |
+|-----------|---------|
+| Полный стенд | [Docker](https://docs.docker.com/get-docker/) и Docker Compose v2 |
+| Фронтенд в dev | **Node.js** 18+ (в CI/образе сборки используется 22), npm |
+| Core без Docker | **JDK 21**, Maven — см. [core-service/README.md](core-service/README.md) |
+| Python-сервисы локально | **Python 3.12**, venv — в README каждого сервиса |
 
 ---
 
-## 3) Архитектура
+## Модули и документация
 
-Сервис реализован как монолитный API с четким разделением слоев:
-
-- `routes.py` - HTTP-контракты и оркестрация use-case'ов;
-- `crud.py` - операции записи/обновления данных в БД;
-- `services/get_metrics.py` - вычисление метрик и сборка `candidate-report`;
-- `services/interview_summarizer.py` - AI-резюме на основе candidate-report;
-- `models.py` + `schemas.py` - модель БД и API-схемы;
-- `database.py` + Alembic - подключение и миграции.
-
-Поток данных:
-1. История интервью загружается в `session_histories`, `code_snapshots`, `interviewer_notes`.
-2. Realtime-события paste/tab switch пишутся в `room_realtime_events`, счетчики - в `analytics_rooms`.
-3. `candidate-report` агрегирует timeline, complexity trend, radar и comparative.
-4. `ai-summary` получает report как JSON, отправляет в GigaChat и сохраняет итог в `ai_summaries`.
+| Каталог | Назначение | Документация |
+|--------|------------|--------------|
+| [core-service](core-service/) | Основной **REST API** (Spring Boot): аутентификация JWT, комнаты, код, заметки, интеграция с остальными частями платформы. В Docker — сервис `app`, контейнер `java-business-app`. | [core-service/README.md](core-service/README.md) |
+| [frontend](frontend/) | **SPA**: Vite, React 18, TypeScript, Monaco Editor, STOMP для WebSocket, React Query. Статика отдаётся **nginx** в compose; в dev — Vite dev server с прокси (см. ниже). | отдельного README нет — `package.json`, [frontend/vite.config.ts](frontend/vite.config.ts), [frontend/nginx/default.conf](frontend/nginx/default.conf) |
+| [AnaliticsService](AnaliticsService/) | **Аналитика** (FastAPI): история событий, метрики, отчёт кандидата, AI-резюме. Публичный ключ JWT монтируется из `AnaliticsService/keys/`. | [AnaliticsService/README.md](AnaliticsService/README.md) |
+| [TasksBankService](TasksBankService/) | **Банк задач**: категории и задачи, API для фронта. Использует тот же публичный ключ, что и аналитика. | [TasksBankService/README.md](TasksBankService/README.md) |
+| [WSCodeService](WSCodeService/) | **WebSocket** для текста кода в комнате (отдельный микросервис). | [WSCodeService/README.md](WSCodeService/README.md) |
+| [WSCursorService](WSCursorService/) | **WebSocket** для позиции и выделения курсора. | [WSCursorService/README.md](WSCursorService/README.md) |
+| [deploy/postgres](deploy/postgres/) | Скрипт инициализации БД при первом старте Postgres в compose. | `init-multiple-dbs.sql`, `.env` по образцу репозитория |
+| [docker-compose.yml](docker-compose.yml) | Один файл для Postgres и всех сервисов + сборка фронтенда. | этот README, комментарии в compose |
+| [scripts](scripts/) | Вспомогательные скрипты (сиды, ключи JWT). | см. файлы в каталоге |
 
 ---
 
-## 4) Аналитика: метрики и математика
+## Архитектура
 
-Ниже описаны ключевые вычисления, которые используются в отчете кандидата.
+Браузер загружает **фронтенд**. В **production-сборке под Docker** nginx в контейнере `frontend` проксирует:
 
-### 4.1 Сложность кода по снапшотам
+- `/api/` и `/ws` → **core-service** (`app:8080`);
+- `/analytics-api/` → **analytics-service** (`analytics-service:8000`);
+- `/tasks-api/` → **tasks-bank-service** (`tasks-bank-service:8000`);
+- `/code-ws/` → **ws-code-service** (`ws-code-service:8000`);
+- `/cursor-ws/` → **ws-cursor-service** (`ws-cursor-service:8000`).
 
-Для каждого снимка кода считаются две оценки:
-- `heuristic_complexity` - эвристическая сложность (AST/паттерны, зависит от языка);
-- `cyclomatic_complexity` - цикломатическая сложность.
+Таким образом, с точки зрения браузера один origin (например `http://localhost:3080`), а маршруты разводятся на бэкенды. **PostgreSQL** используется core и Python-сервисами; скрипт [deploy/postgres/init-multiple-dbs.sql](deploy/postgres/init-multiple-dbs.sql) при первом подъёме создаёт БД `neo_tasks_bank` и `coding_board_db` (подключение и учётные данные — в `.env` Postgres и сервисов).
 
-Комбинированный raw-скор снапшота:
+<img width="935" height="657" alt="image" src="https://github.com/user-attachments/assets/b5b5a2e9-180d-400e-b558-fc2807ca2028" />
 
-$$
-S_i = H_i + C_i
-$$
-
-где:
-- $H_i$ - эвристическая сложность снимка $i$;
-- $C_i$ - цикломатическая сложность снимка $i$.
-
-### 4.2 Нормализованный тренд сложности
-
-Для графика тренда используется нормализация по максимуму в рамках текущей сессии:
-
-$$
-\hat{H}_i = \frac{H_i}{\max_j H_j}, \qquad
-\hat{C}_i = \frac{C_i}{\max_j C_j}
-$$
-
-Комбинация:
-
-$$
-T_i =
-\begin{cases}
-\frac{\hat{H}_i + \hat{C}_i}{2}, & \hat{H}_i > 0 \land \hat{C}_i > 0 \\
-\hat{H}_i + \hat{C}_i, & \text{иначе}
-\end{cases}
-$$
-
-В API `complexityTrend` отправляется в шкале 0..100:
-
-$$
-T_i^{(100)} = \mathrm{round}(100 \cdot T_i)
-$$
-
-### 4.3 Сырый score кандидата (для сравнительной аналитики)
-
-На основе средних значений по снапшотам и штрафов за поведенческие сигналы:
-
-$$
-\text{skill} = \frac{1}{n}\sum_{i=1}^{n}(H_i + C_i)
-$$
-
-$$
-\text{raw} = 3 \cdot \text{skill} - 2 \cdot \text{paste} - 0.5 \cdot \text{tabSwitch}
-$$
-
-где:
-- `paste` - количество вставок из буфера;
-- `tabSwitch` - количество переключений вкладки.
-
-### 4.4 Comparative: Z-score, перцентиль и кривая распределения
-
-Если в БД достаточно peer-комнат (минимум 2), параметры берутся эмпирически:
-
-<p><b>μ</b> = mean(raw<sub>peer</sub>), <b>σ</b> = std<sub>pop</sub>(raw<sub>peer</sub>)</p>
-
-<p><b>z</b> = (raw<sub>candidate</sub> - μ) / σ</p>
-
-Перцентиль в эмпирическом режиме:
-
-<p><b>percentile</b> = 100 × ( count(s ∈ peer, where s ≤ raw<sub>candidate</sub>) / count(peer) )</p>
-
-Если peer-данных мало, используются fallback-параметры:
-- <b>μ</b> = 28.0
-- <b>σ</b> = 10.0
-
-И перцентиль считается через CDF стандартного нормального распределения:
-
-<p><b>Φ(z)</b> = 0.5 × (1 + erf(z / √2))</p>
-
-<p><b>percentile</b> = 100 × Φ(z)</p>
-
-Кривая `distributionCurve` строится как нормализованная плотность `N(0,1)`:
-
-<p><b>φ(x)</b> = (1 / √(2π)) × e<sup>-x²/2</sup></p>
-
-<p><b>y<sub>norm</sub>(x)</b> = φ(x) / max<sub>x</sub>(φ(x))</p>
-
-### 4.5 Radar-метрики
-
-`radarMetrics` формируется из сохраненного отчета (6 осей):
-- `systemDesign`
-- `codeReadability`
-- `communication`
-- `coachability`
-- `technicalScore`
-- `integrity`
-
-При отсутствии данных возвращаются нулевые значения.
 
 ---
 
-## 5) Описание AI-summary
+## Запуск через Docker Compose
 
-`GET /api/v1/rooms/{idRoom}/ai-summary` работает так:
+1. Клонируйте репозиторий и перейдите в корень.
+2. Подготовьте **обязательные** `env_file`, на которые ссылается [docker-compose.yml](docker-compose.yml):
+   - [deploy/postgres/.env](deploy/postgres/) — пользователь и пароль Postgres (файл обязателен для `env_file.required: true`);
+   - [core-service/.env](core-service/) — на основе `.env.origin`;
+   - [AnaliticsService/.env](AnaliticsService/), [TasksBankService/.env](TasksBankService/), [WSCodeService/.env](WSCodeService/), [WSCursorService/.env](WSCursorService/) — по примерам в соответствующих каталогах.
+3. Для JWT: **RSA-ключи** в `core-service` и **публичный** ключ, смонтированный в Python-сервисы (см. compose: `AnaliticsService/keys/public_key.pem`). Пошагово — в [core-service/README.md](core-service/README.md).
+4. Соберите и поднимите стек:
 
-1. Сервис строит `candidate-report` по комнате.
-2. Формирует промпт для GigaChat (роль: тех. рекрутер/аналитик).
-3. Отправляет report в JSON виде в `chat/completions`.
-4. Ожидает строгий JSON формата:
-   - `positivePoints: string[]`
-   - `negativePoints: string[]`
-   - `aiRecommendation: string`
-5. Нормализует ответ (поддерживаются алиасы полей) и валидирует схемой Pydantic.
-6. Сохраняет результат в `ai_summaries` и `ai_summary_bullets`.
+   ```bash
+   docker compose up --build -d
+   ```
 
-Особенности логики:
-- Основной фокус AI - заметки интервьюера и контекст событий timeline;
-- учитывается последовательность событий (например, поздние paste после финальной позитивной заметки);
-- итог возвращается в виде короткой HR-ориентированной выжимки.
+5. Откройте UI: **http://localhost:3080** (порт проброшен с контейнера `frontend`).
+
+Сервисы в compose: `postgres`, `app` (Java core), `analytics-service`, `tasks-bank-service`, `ws-code-service`, `ws-cursor-service`, `frontend`. Логи, остановка, отладка отдельного контейнера — стандартно для Docker; детали переменных и портов при **локальном** запуске без compose — в README каждого модуля.
 
 ---
 
-## Полезные замечания
+## Локальная разработка фронтенда
 
-- Для AI-функциональности нужен валидный `GIGACHAT_AUTH_KEY`.
-- Для production рекомендуется PostgreSQL и отдельная настройка сетевой/секретной инфраструктуры.
-- Swagger UI доступен после запуска по `/docs`.
+Из **корня репозитория** (npm workspace):
 
+```bash
+npm install
+npm run dev
+```
 
+Скрипт запускает Vite для пакета `neo-coding-board` (каталог [frontend](frontend/)); по умолчанию dev-сервер слушает порт **5173**. Цели прокси для `/api`, `/ws`, `/tasks-api`, `/analytics-api` задаются в [frontend/vite.config.ts](frontend/vite.config.ts): при полном локальном стенде замените `target` на свои `localhost` и порты (для Java обычно **8080**; для uvicorn — см. README Python-сервисов; внутри Docker-сети несколько сервисов слушают **8000** на разных хостах). Сборка и превью: `npm run build`, `npm run preview` из корня.
 
+---
 
+## Вспомогательные скрипты
 
-1WzOUL4pArZO
+В [scripts](scripts/):
 
+- **ensure-jwt-keys.sh** — генерирует пару RSA для JWT в `core-service/app/src/main/resources/keys/` и копирует публичный ключ в `AnaliticsService/keys/public_key.pem` (нужно для Python-сервисов в Docker). Bash; на Windows удобно запускать из Git Bash или WSL.
+- **coding_board_seed.py**, **seed_all_test_data.py** — сиды тестовых данных; смотрите заголовки файлов и документацию в [AnaliticsService/testing/](AnaliticsService/testing/), если используете демо-сценарии аналитики.
