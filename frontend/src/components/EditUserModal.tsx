@@ -1,15 +1,8 @@
 import { useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import type { AdminUser } from './UserRow';
+import { mapStaffUserToAdminUser, type StaffUserJson } from '@/api/staffUsersApi';
 import styles from './CreateUserModal.module.css';
-
-interface UpdateUserResponse {
-  id: string;
-  name: string;
-  email: string;
-  role: 'HR' | 'INTERVIEWER' | 'SUPERUSER';
-  createdAt: string;
-}
 
 export interface EditUserModalProps {
   isOpen: boolean;
@@ -70,15 +63,12 @@ function EditUserModalContent({
     setIsSubmitting(true);
     setError(null);
     try {
-      const body: Record<string, string> = {
-        name: name.trim(),
-        email: email.trim(),
+      const body: { username: string; role: string } = {
+        username: email.trim(),
+        role:     isSuperuserAccount ? 'SUPERUSER' : role,
       };
-      if (!isSuperuserAccount) {
-        body.role = role;
-      }
-      const res = await fetch(`/api/v1/admin/users/${user.id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/v1/users/${user.id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -89,14 +79,8 @@ function EditUserModalContent({
         setError(`Ошибка сохранения (${res.status})`);
         return;
       }
-      const data = (await res.json()) as UpdateUserResponse;
-      onSuccess({
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        createdAt: data.createdAt,
-      });
+      const data = (await res.json()) as StaffUserJson;
+      onSuccess(mapStaffUserToAdminUser(data));
       onClose();
     } catch {
       setError('Сетевая ошибка при сохранении');

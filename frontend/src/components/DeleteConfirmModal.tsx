@@ -70,14 +70,10 @@ function DeleteConfirmContent({ user, token, onClose, onSuccess }: ContentProps)
     setError(null);
 
     try {
-      // TODO: Endpoint not confirmed with backend. Clarify before production.
-      // TODO: Confirm endpoint URL — /api/v1/admin/users/:id?
-      // TODO: Confirm whether DELETE returns 204 No Content or 200 with body
-      const res = await fetch(`/api/v1/admin/users/${user.id}`, {
+      const res = await fetch(`/api/v1/users/${user.id}`, {
         method:  'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
-          // TODO: Confirm whether DELETE requires a request body with backend
         },
       });
 

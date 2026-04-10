@@ -298,14 +298,47 @@ export default function ReportPage() {
     [report.complexityTrend],
   );
 
-  const candidateDistributionPoint = useMemo(
-    () => ({
-      x: report.comparative.candidateZScore,
-      y: interpolateDistributionY(report.comparative.distributionCurve, report.comparative.candidateZScore),
-      name: report.summary.candidateName,
-    }),
-    [report.comparative.candidateZScore, report.comparative.distributionCurve, report.summary.candidateName],
-  );
+  /**
+   * Benchmark: кривая — N(0,1) на x ∈ [curve.min, curve.max], а candidateZScore с бэкенда
+   * может быть любым (сырой скор сильно выше fallback μ=28 или σ пиров ≈ 0 → z ≫ 3).
+   * Recharts по умолчанию даёт category-X: точка кандидата оказывалась отдельным «столбцом»
+   * справа, а не по числовой координате — type="number" + domain + clamp позиции на колоколе.
+   */
+  const benchmarkPlot = useMemo(() => {
+    const curve = report.comparative.distributionCurve;
+    const zRaw = report.comparative.candidateZScore;
+    const name = report.summary.candidateName;
+    if (curve.length === 0) {
+      return {
+        xDomain: [-4, 4] as [number, number],
+        zRaw,
+        zPlot: zRaw,
+        clamped: false,
+        candidatePoint: { x: zRaw, y: 0, name },
+      };
+    }
+    const xs = curve.map((p) => p.x);
+    const xLow = Math.min(...xs);
+    const xHigh = Math.max(...xs);
+    const pad = Math.max((xHigh - xLow) * 0.06, 0.15);
+    const zPlot = Math.min(xHigh, Math.max(xLow, zRaw));
+    const clamped = Math.abs(zRaw - zPlot) > 0.02;
+    return {
+      xDomain: [xLow - pad, xHigh + pad] as [number, number],
+      zRaw,
+      zPlot,
+      clamped,
+      candidatePoint: {
+        x: zPlot,
+        y: interpolateDistributionY(curve, zPlot),
+        name,
+      },
+    };
+  }, [
+    report.comparative.candidateZScore,
+    report.comparative.distributionCurve,
+    report.summary.candidateName,
+  ]);
 
   const aiRecommendationText = useMemo(
     () => aiSummary.aiRecommendation.replace('@{candidateName}', report.summary.candidateName),
@@ -508,7 +541,14 @@ export default function ReportPage() {
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={report.comparative.distributionCurve}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="x" stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} />
+              <XAxis
+                type="number"
+                dataKey="x"
+                domain={benchmarkPlot.xDomain}
+                allowDecimals
+                stroke="#6060a0"
+                tick={{ fill: '#6060a0', fontSize: 11 }}
+              />
               <YAxis stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} />
               <Tooltip
                 contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
@@ -519,12 +559,18 @@ export default function ReportPage() {
               <Legend wrapperStyle={{ color: '#6060a0', fontSize: 12 }} />
               <Line type="monotone" dataKey="y" stroke="#7B9EA6" dot={false} strokeWidth={2} name="Распределение" />
               <ReferenceLine
-                x={report.comparative.candidateZScore}
+                x={benchmarkPlot.zPlot}
                 stroke="#A05050"
                 strokeWidth={1}
-                label={{ value: `${report.summary.candidateName} z=${report.comparative.candidateZScore.toFixed(2)}`, fill: '#A05050', fontSize: 11 }}
+                label={{
+                  value: benchmarkPlot.clamped
+                    ? `${report.summary.candidateName} z=${benchmarkPlot.zRaw.toFixed(2)} (на шкале — у края)`
+                    : `${report.summary.candidateName} z=${benchmarkPlot.zRaw.toFixed(2)}`,
+                  fill: '#A05050',
+                  fontSize: 10,
+                }}
               />
-              <Scatter name="Кандидат" data={[candidateDistributionPoint]} fill="#A05050" />
+              <Scatter name="Кандидат" data={[benchmarkPlot.candidatePoint]} fill="#A05050" />
             </LineChart>
           </ResponsiveContainer>
         </div>

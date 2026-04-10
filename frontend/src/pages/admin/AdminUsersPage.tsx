@@ -23,6 +23,7 @@ import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import EditUserModal from '@/components/EditUserModal';
 import Pagination from '@/components/Pagination';
 import BackLink from '@/components/BackLink';
+import { mapStaffUserToAdminUser, type StaffUserJson } from '@/api/staffUsersApi';
 import styles from './AdminUsersPage.module.css';
 
 // ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ const COLUMNS = [
 
 /** Spring Data Page: либо вложенный `page`, либо плоские totalPages/number/size. */
 interface AdminUsersListJson {
-  content:        AdminUser[];
+  content:        unknown[];
   page?:          { totalPages: number; size?: number; number?: number; totalElements?: number };
   totalPages?:    number;
   totalElements?: number;
@@ -126,7 +127,7 @@ export default function AdminUsersPage() {
 
       try {
         const res = await fetch(
-          `/api/v1/admin/users?page=${currentPage}&size=${PAGE_SIZE}`,
+          `/api/v1/users/staff?page=${currentPage}&size=${PAGE_SIZE}`,
           { headers: { Authorization: `Bearer ${bearerToken}` } },
         );
 
@@ -138,7 +139,8 @@ export default function AdminUsersPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = (await res.json()) as AdminUsersListJson;
-        const list = Array.isArray(data.content) ? data.content : [];
+        const raw = Array.isArray(data.content) ? data.content : [];
+        const list = (raw as StaffUserJson[]).map(mapStaffUserToAdminUser);
         setUsers(list);
         const totalPages =
           data.page?.totalPages ??
@@ -173,10 +175,8 @@ export default function AdminUsersPage() {
   }, [token]);
 
   // ── Optimistic list updates ───────────────────────────────────────────────
-  const handleUserCreated = useCallback((newUser: AdminUser) => {
-    setUsers((prev) => [newUser, ...prev]);
-    // TODO: If server-side consistency is required, re-fetch here instead of
-    // prepending optimistically. For now optimistic update is sufficient.
+  const handleUserCreated = useCallback(() => {
+    setRetryCount((c) => c + 1);
   }, []);
 
   const handleUserDeleted = useCallback((deletedId: string) => {
