@@ -75,6 +75,10 @@ public class SecurityConfig {
             "/api/v1/rooms/all"
     };
 
+    private static final String[] SUPERUSER_URLS = {
+            "/api/v1/auth/register"
+    };
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
@@ -87,6 +91,7 @@ public class SecurityConfig {
                         auth
                                 .requestMatchers(PUBLIC_URLS).permitAll()
                                 .requestMatchers(SWAGGER_URLS).permitAll()
+                                .requestMatchers(SUPERUSER_URLS).hasAnyRole("SUPERUSER")
                                 .requestMatchers(HR_URLS).hasAnyRole("HR", "SUPERUSER")
                                 .requestMatchers(INTERVIEWER_URLS).hasAnyRole("INTERVIEWER", "SUPERUSER")
                                 .requestMatchers(CODE_URLS).hasAnyRole("HR", "INTERVIEWER", "SUPERUSER")
