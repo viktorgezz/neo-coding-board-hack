@@ -67,9 +67,11 @@ public class CodeAsyncCommandService {
             Instant exactTimeCreated = pair.getSecond();
 
             Instant dateStart = roomDateStartMap.get(req.getIdRoom());
+            // Колонка code_snapshots.time_offset NOT NULL; при отсутствии date_start у комнаты
+            // раньше передавался null → весь flush падал, снепшоты не попадали в БД.
             String timeOffset = dateStart != null
                     ? TimeOffsetUtils.calculate(dateStart, exactTimeCreated)
-                    : null;
+                    : "00:00";
 
             // Using EntityManager.getReference to create proxy objects without DB hits
             Candidate candidateProxy = req.getIdCandidate() != null

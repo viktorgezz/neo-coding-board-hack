@@ -95,6 +95,33 @@ export function decodeJWT(token: string): JWTPayload | null {
 }
 
 // ---------------------------------------------------------------------------
+// decodeJwtNumericUserId — claim `id` из access-токена Spring (users.id)
+// ---------------------------------------------------------------------------
+
+/**
+ * Числовой `id` пользователя из payload JWT (без проверки подписи).
+ * Нужен для STOMP CodeSnapshotWsRequest.idInterviewer. Мок-JWT без числового id → null.
+ */
+export function decodeJwtNumericUserId(token: string): number | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64url = parts[1];
+    const base64 = base64url
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(base64url.length + ((4 - (base64url.length % 4)) % 4), '=');
+    const p = JSON.parse(atob(base64)) as Record<string, unknown>;
+    const id = p['id'];
+    if (typeof id === 'number' && Number.isFinite(id)) return Math.trunc(id);
+    if (typeof id === 'string' && /^\d+$/.test(id)) return parseInt(id, 10);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // isTokenExpired
 // ---------------------------------------------------------------------------
 

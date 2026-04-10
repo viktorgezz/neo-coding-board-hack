@@ -21,12 +21,14 @@ router = APIRouter()
 
 require_analytics_access = require_roles("HR", "INTERVIEWER")
 
+# Real-time metrics from the candidate editor use the candidate JWT from core (role CANDIDATE).
+require_metrics_writer = require_roles("HR", "INTERVIEWER", "CANDIDATE")
+
 
 @router.post(
     "/api/v1/rooms/{idRoom}/history",
     status_code=201,
     tags=["Data Ingestion"],
-    security=[],
 )
 def save_history(
     idRoom: uuid.UUID,
@@ -41,7 +43,7 @@ def save_history(
 def increment_paste(
     idRoom: uuid.UUID,
     session: Session = Depends(get_db),
-    _: CurrentUser = Depends(require_analytics_access),
+    _: CurrentUser = Depends(require_metrics_writer),
 ):
     """Увеличивает счётчик вставок из буфера и пишет событие в хронологию комнаты."""
     current = crud.increment_pastes(session, idRoom)
@@ -51,7 +53,7 @@ def increment_paste(
 def increment_tab_switch(
     idRoom: uuid.UUID,
     session: Session = Depends(get_db),
-    _: CurrentUser = Depends(require_analytics_access),
+    _: CurrentUser = Depends(require_metrics_writer),
 ):
     """Увеличивает счётчик смены вкладки и пишет событие в хронологию комнаты."""
     current = crud.increment_switches(session, idRoom)

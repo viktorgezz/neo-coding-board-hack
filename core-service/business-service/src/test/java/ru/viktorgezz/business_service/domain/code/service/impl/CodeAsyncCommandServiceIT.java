@@ -65,6 +65,22 @@ class CodeAsyncCommandServiceIT extends AbstractIntegrationPostgresTest {
     }
 
     @Test
+    @DisplayName("Снимок сохраняется, если у комнаты ещё нет date_start (time_offset = 00:00)")
+    void flushQueue_roomWithoutDateStart_snapshotSavedWithZeroOffset() {
+        Room roomTest = new Room("Комната без старта", "Backend", RoomStatus.ACTIVE, Instant.now());
+        roomTest = repoRoom.save(roomTest);
+        UUID roomIdTest = roomTest.getId();
+
+        CodeSnapshotWsRequest requestWs = new CodeSnapshotWsRequest(null, null, roomIdTest, "JAVA", "class A {}");
+        serviceCommandAsyncCode.processIncomingSnapshot(requestWs);
+        serviceCommandAsyncCode.flushQueue();
+
+        var snapshotsSaved = repoSnapshotCode.findAll();
+        assertThat(snapshotsSaved).hasSize(1);
+        assertThat(snapshotsSaved.getFirst().getTimeOffset()).isEqualTo("00:00");
+    }
+
+    @Test
     @DisplayName("Игнорирование пустой очереди без ошибок")
     void flushQueue_queueIsEmpty_noErrorsAndNoSaves() {
         // Act

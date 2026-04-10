@@ -67,11 +67,31 @@ function hhmmToMinutes(v: string): number {
   return h * 60 + m;
 }
 
-function formatMin(min: number): string {
-  const clamped = Math.max(0, Math.round(min * 60));
-  const mm = Math.floor(clamped / 60).toString().padStart(2, '0');
-  const ss = (clamped % 60).toString().padStart(2, '0');
-  return `${mm}:${ss}`;
+/** Минуты от начала сессии → компактная строка для осей и тултипов (не путать с mm:ss часов). */
+function formatElapsedMinutes(min: number): string {
+  if (!Number.isFinite(min) || min < 0) return '0:00';
+  let sec = Math.round(min * 60);
+  const h = Math.floor(sec / 3600);
+  sec %= 3600;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  const p2 = (n: number) => n.toString().padStart(2, '0');
+  if (h > 0) return `${h}:${p2(m)}:${p2(s)}`;
+  return `${m}:${p2(s)}`;
+}
+
+/** Длительность интервью для карточки метрик (человекочитаемо). */
+function formatInterviewDurationLabel(min: number): string {
+  if (!Number.isFinite(min) || min <= 0) return '—';
+  const sec = Math.round(min * 60);
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${h} ч`);
+  if (m > 0) parts.push(`${m} мин`);
+  if (s > 0) parts.push(`${s} с`);
+  return parts.join(' ') || '0 с';
 }
 
 function getComplexityPattern(values: number[]): string {
@@ -192,12 +212,36 @@ export default function ReportPage() {
   }, [report.timelineEvents]);
 
   const timelineChartData = useMemo(() => {
-    return report.timelineEvents.map((event) => ({
-      ...event,
-      xMin: minutesSince(timelineStartMs, event.timestamp),
-      yLine: 1,
-      eventLabel: EVENT_LABEL[event.type],
-    }));
+    const raw = report.timelineEvents.map((event) => {
+      const xMin = minutesSince(timelineStartMs, event.timestamp);
+      return {
+        ...event,
+        xMin,
+        /** Исходные минуты от старта — для тултипа (xMin после разведения может сдвинуться). */
+        xMinActual: xMin,
+        yLine: 1,
+        eventLabel: EVENT_LABEL[event.type],
+      };
+    });
+
+    // Одинаковый timestamp + тип → одна координата x; на scatter точки слипаются.
+    // Сдвигаем вправо на доли минуты, порядок как в ответе API.
+    const stepMin = 0.15;
+    const groupKey = (e: (typeof raw)[number]) => `${e.type}\0${e.timestamp}`;
+    const groups = new Map<string, number[]>();
+    raw.forEach((row, idx) => {
+      const k = groupKey(row);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(idx);
+    });
+    const out = raw.map((r) => ({ ...r }));
+    groups.forEach((indices) => {
+      if (indices.length <= 1) return;
+      indices.forEach((idx, i) => {
+        out[idx] = { ...out[idx], xMin: raw[idx].xMin + i * stepMin };
+      });
+    });
+    return out;
   }, [report.timelineEvents, timelineStartMs]);
 
   const complexityData = useMemo(() => {
@@ -316,7 +360,7 @@ export default function ReportPage() {
         </div>
         <div className={styles.metricCard}>
           <span className={styles.metricLabel}>Время интервью</span>
-          <span className={styles.metricValue}>{formatMin(interviewDurationMin)}</span>
+          <span className={styles.metricValue}>{formatInterviewDurationLabel(interviewDurationMin)}</span>
         </div>
         <div className={styles.metricCard}>
           <span className={styles.metricLabel}>Z-Score / Перцентиль</span>
@@ -363,7 +407,7 @@ export default function ReportPage() {
                 dataKey="xMin"
                 stroke="#6060a0"
                 tick={{ fill: '#6060a0', fontSize: 11 }}
-                tickFormatter={formatMin}
+                tickFormatter={formatElapsedMinutes}
                 name="Время"
               />
               <YAxis
@@ -382,7 +426,11 @@ export default function ReportPage() {
                   const label = payload?.payload?.label ?? '';
                   return label;
                 }}
-                labelFormatter={(value) => `t=${formatMin(Number(value))}`}
+                labelFormatter={(value, payload) => {
+                  const p = Array.isArray(payload) ? payload[0]?.payload : (payload as { payload?: { xMinActual?: number } })?.payload;
+                  const mins = typeof p?.xMinActual === 'number' ? p.xMinActual : Number(value);
+                  return `t=${formatElapsedMinutes(mins)}`;
+                }}
               />
               <Legend formatter={(value) => EVENT_LABEL[value as EventType] ?? value} />
               {(['NOTE', 'PASTE', 'TAB_SWITCH'] as EventType[]).map((type) => (
@@ -403,14 +451,14 @@ export default function ReportPage() {
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={complexityData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="xMin" stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} tickFormatter={formatMin} />
+              <XAxis dataKey="xMin" stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} tickFormatter={formatElapsedMinutes} />
               <YAxis stroke="#6060a0" tick={{ fill: '#6060a0', fontSize: 11 }} domain={[0, 100]} />
               <Tooltip
                 contentStyle={{ background: '#13131f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6 }}
                 labelStyle={{ color: '#6060a0', fontSize: 11 }}
                 itemStyle={{ color: '#c0c0e0', fontSize: 12 }}
                 formatter={(v) => [`${v}`, 'Цикломатическая сложность']}
-                labelFormatter={(v) => `t=${formatMin(Number(v))}`}
+                labelFormatter={(v) => `t=${formatElapsedMinutes(Number(v))}`}
               />
               <Legend wrapperStyle={{ color: '#6060a0', fontSize: 12 }} />
               <Line type="monotone" dataKey="complexity" stroke="#7B9EA6" strokeWidth={2} dot={{ r: 3, fill: '#7B9EA6' }} activeDot={{ r: 5, fill: '#7B9EA6' }} />
@@ -500,7 +548,7 @@ export default function ReportPage() {
           <div className={styles.kvList}>
             <div className={styles.kvRow}><span className={styles.kvKey}>Сложность конструкций</span><span className={styles.kvValue}>Высокая</span></div>
             <div className={styles.kvRow}><span className={styles.kvKey}>Цикломатическая динамика</span><span className={styles.kvValue}>{complexityPattern}</span></div>
-            <div className={styles.kvRow}><span className={styles.kvKey}>Вердикт vs Время</span><span className={styles.kvValue}>{report.summary.finalVerdict} @ {formatMin(interviewDurationMin)}</span></div>
+            <div className={styles.kvRow}><span className={styles.kvKey}>Вердикт vs Время</span><span className={styles.kvValue}>{report.summary.finalVerdict} @ {formatInterviewDurationLabel(interviewDurationMin)}</span></div>
           </div>
         </section>
 

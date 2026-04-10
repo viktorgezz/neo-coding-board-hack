@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { getAccessToken } from '@/auth/AuthContext';
 import { useAuth } from '@/auth/useAuth';
 import BackLink from '@/components/BackLink';
 import { ROLES } from '@/constants/roles';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+import { getTasksBankApiRoot } from '@/api/tasksBankClient';
 import styles from './TaskBankManagePage.module.css';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -26,12 +28,15 @@ type Difficulty = 'easy' | 'medium' | 'hard';
 
 // ── Axios instance ─────────────────────────────────────────────────────────────
 
-const TASKS_BANK_BASE_URL = (
-  import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
-  ?? '/tasks-api'
-).replace(/\/$/, '');
+const api = axios.create({ baseURL: getTasksBankApiRoot() });
 
-const api = axios.create({ baseURL: TASKS_BANK_BASE_URL });
+api.interceptors.request.use((config) => {
+  const access = getAccessToken();
+  if (access) {
+    config.headers.Authorization = `Bearer ${access}`;
+  }
+  return config;
+});
 
 // ── API hooks ──────────────────────────────────────────────────────────────────
 

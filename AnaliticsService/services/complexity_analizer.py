@@ -1,5 +1,7 @@
 """Цикломатическая сложность: Python — radon, остальное (в т.ч. Kotlin) — lizard."""
 
+import textwrap
+
 import lizard
 import radon.complexity as cc_radon
 
@@ -9,14 +11,24 @@ class ComplexityAnalyzer:
 
     @staticmethod
     def get_python_complexity(code: str) -> int:
-        """Суммарная цикломатическая сложность по всем блокам кода в Python (пакет radon)."""
+        """Суммарная цикломатическая сложность по всем блокам кода в Python (пакет radon).
+
+        Снимки из редактора часто — тело метода с отступом под класс; без нормализации AST падает
+        с IndentationError и раньше возвращалось 0.
+        """
         if not code or not code.strip():
             return 0
-        try:
-            results = cc_radon.cc_visit(code)
-            return sum(block.complexity for block in results)
-        except Exception:
-            return 0
+        normalized = textwrap.dedent(code.expandtabs()).strip()
+        stripped = code.strip()
+        for src in (normalized, stripped):
+            if not src:
+                continue
+            try:
+                results = cc_radon.cc_visit(src)
+                return sum(block.complexity for block in results)
+            except Exception:
+                continue
+        return 0
 
     @staticmethod
     def get_universal_complexity(code: str, ext: str) -> int:
