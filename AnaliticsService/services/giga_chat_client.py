@@ -70,14 +70,20 @@ class GigaChatClient:
 
     def __init__(self) -> None:
         self.settings = GigaChatSettings()
+        self._url_chat: str | None = None
+        self._headers_chat: dict[str, str] | None = None
+
+    def _ensure_chat_session(self) -> None:
+        """Ленивая OAuth-авторизация перед первым запросом к чату (без ключа — ValueError)."""
+        if self._headers_chat is not None:
+            return
         if not self.settings.auth_key:
             raise ValueError(
                 "Не задан ключ GigaChat: укажите GIGACHAT_AUTH_KEY в окружении или в GigaChatSettings.auth_key"
             )
-        auth_key = self.settings.auth_key
-        access_token = self.get_access_token(auth_key)
-        self.url_chat = self.settings.chat_url
-        self.headers_chat = {
+        access_token = self.get_access_token(self.settings.auth_key)
+        self._url_chat = self.settings.chat_url
+        self._headers_chat = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "Authorization": f"Bearer {access_token}",
@@ -103,14 +109,19 @@ class GigaChatClient:
 
     def ask_ai(self, messages: list[dict[str, str]]) -> Any:
         """Отправляет сообщения в чат; возвращает распарсенный JSON ответа API."""
+        self._ensure_chat_session()
+        url_chat = self._url_chat
+        headers_chat = self._headers_chat
+        if not url_chat or not headers_chat:
+            raise RuntimeError("GigaChat: сессия не инициализирована")
         payload_chat = {
             "model": self.settings.model,
             "messages": messages,
             "max_tokens": self.settings.max_tokens,
         }
         response = requests.post(
-            self.url_chat,
-            headers=self.headers_chat,
+            url_chat,
+            headers=headers_chat,
             json=payload_chat,
             verify=False,
             timeout=120,

@@ -40,10 +40,13 @@ def get_or_create_room(session: Session, room_id: uuid.UUID) -> Room:
     return room
 
 
-def _delete_assessment_report_ai(session: Session, room_id: uuid.UUID) -> None:
-    """Удаляет оценку интервьюера, candidate-report и AI-summary для комнаты (без commit)."""
-    if a := session.get(InterviewerAssessmentRecord, room_id):
-        session.delete(a)
+def _delete_derived_candidate_report_and_ai(session: Session, room_id: uuid.UUID) -> None:
+    """Удаляет производные candidate-report и AI-summary (без commit).
+
+    Оценку интервьюера (`interviewer_assessments`) не трогаем: она задаётся в модалке
+    завершения интервью и приходит в БД *до* POST /history; прежняя логика удаляла её
+    здесь же и обнуляла радар на странице отчёта.
+    """
     if cr := session.scalar(
         select(CandidateReportRecord).where(CandidateReportRecord.room_id == room_id)
     ):
@@ -53,9 +56,9 @@ def _delete_assessment_report_ai(session: Session, room_id: uuid.UUID) -> None:
 
 
 def save_room_history(session: Session, room_id: uuid.UUID, history: SessionHistory) -> None:
-    """Полностью заменяет историю сессии (снепшоты и заметки); сбрасывает отчёт/оценку/AI для комнаты."""
+    """Полностью заменяет историю сессии (снепшоты и заметки); сбрасывает только производный отчёт и AI."""
     get_or_create_room(session, room_id)
-    _delete_assessment_report_ai(session, room_id)
+    _delete_derived_candidate_report_and_ai(session, room_id)
     if sh := session.scalar(
         select(SessionHistoryRecord).where(SessionHistoryRecord.room_id == room_id)
     ):

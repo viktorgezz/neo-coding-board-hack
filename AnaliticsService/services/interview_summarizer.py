@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import Any, TypedDict
 
@@ -11,6 +12,8 @@ from sqlalchemy.orm import Session
 from schemas import AISummaryResponse, CandidateReport
 from .giga_chat_client import GigaChatClient
 from .get_metrics import GetMetrics
+
+logger = logging.getLogger(__name__)
 
 
 class SummaryResponse(TypedDict):
@@ -23,6 +26,26 @@ class SummaryResponse(TypedDict):
 
 class InterviewSummarizer(GigaChatClient):
     """Генерирует краткое резюме по отчёту собеседования."""
+
+    @staticmethod
+    def fallback_summary(report: CandidateReport) -> AISummaryResponse:
+        """Ответ без GigaChat: 200 OK вместо 500, чтобы страница отчёта не ломалась."""
+        s = report.summary if isinstance(report.summary, dict) else {}
+        name = (s.get("candidateName") or s.get("candidate_name") or "").strip()
+        verdict = (s.get("finalVerdict") or s.get("final_verdict") or "").strip()
+        lead = (
+            "Резюме от нейросети недоступно: не задан GIGACHAT_AUTH_KEY в окружении сервиса аналитики, "
+            "ошибка OAuth или ответ GigaChat не удалось разобрать. "
+            "Блоки отчёта на этой странице (радар, таймлайн и т.д.) — из данных интервью, без ИИ."
+        )
+        tail = ""
+        if name or verdict:
+            tail = f" Кандидат: {name or '—'}. Вердикт: {verdict or '—'}."
+        return AISummaryResponse(
+            positivePoints=[],
+            negativePoints=[],
+            aiRecommendation=lead + tail,
+        )
 
     SYSTEM_PROMPT = (
     """Ты — экспертный технический рекрутер и аналитик данных в IT-компании. Твоя задача — анализировать результаты технических интервью с платформы Live Coding и формировать структурированное резюме для HR-департамента.
@@ -115,5 +138,9 @@ class InterviewSummarizer(GigaChatClient):
         """Достаёт candidate-report по `room_id`, отправляет в AI и возвращает валидированный `AISummaryResponse`."""
         report_payload = GetMetrics(session, room_id).get_candidate_report()
         report = CandidateReport.model_validate(report_payload)
-        summary = self.get_summary(report.model_dump())
-        return AISummaryResponse.model_validate(summary)
+        try:
+            summary = self.get_summary(report.model_dump())
+            return AISummaryResponse.model_validate(summary)
+        except Exception as exc:
+            logger.warning("ai-summary: GigaChat недоступен или ошибка разбора, отдаём fallback: %s", exc)
+            return self.fallback_summary(report)

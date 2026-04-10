@@ -2,21 +2,20 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: neo_postgres
-    environment:
-      POSTGRES_DB: neo_analytics
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
+    env_file:
+      - path: ./deploy/postgres/.env
+        required: true
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infrastructure/postgres/init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql
+      - ./deploy/postgres/init-multiple-dbs.sql:/docker-entrypoint-initdb.d/01-init-databases.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d neo_analytics"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    networks:
+      - neo
 
   analytics-service:
     container_name: neo_analytics_service
@@ -24,17 +23,16 @@ services:
       context: ./AnaliticsService
       dockerfile: Dockerfile
     env_file:
-      - ./AnaliticsService/.env
-    environment:
-      JWT_PUBLIC_KEY_PATH: /app/keys/public_key.pem
+      - path: ./AnaliticsService/.env
+        required: true
     volumes:
       - ./AnaliticsService/keys/public_key.pem:/app/keys/public_key.pem:ro
-    ports:
-      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - neo
 
   tasks-bank-service:
     container_name: neo_tasks_bank_service
@@ -42,50 +40,78 @@ services:
       context: ./TasksBankService
       dockerfile: Dockerfile
     env_file:
-      - ./TasksBankService/.env
-    environment:
-      DATABASE_URL: postgresql+psycopg2://postgres:postgres@postgres:5432/neo_tasks_bank
-      JWT_PUBLIC_KEY_PATH: /app/keys/public_key.pem
+      - path: ./TasksBankService/.env
+        required: true
     volumes:
       - ./AnaliticsService/keys/public_key.pem:/app/keys/public_key.pem:ro
-    ports:
-      - "8001:8000"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - neo
 
   ws-cursor-service:
     container_name: neo_ws_cursor_service
     build:
       context: ./WSCursorService
       dockerfile: Dockerfile
-    ports:
-      - "8002:8000"
-    restart: unless-stopped
-    
-  app:
-    build:
-      context: ./core-service
-      dockerfile: Dockerfile
     env_file:
-      - ./core-service/.env
-    container_name: java-business-app
-    ports:
-      - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - path: ./WSCursorService/.env
+        required: true
+    restart: unless-stopped
+    networks:
+      - neo
 
   ws-code-service:
     container_name: neo_ws_code_service
     build:
       context: ./WSCodeService
       dockerfile: Dockerfile
-    ports:
-      - "8003:8000"
+    env_file:
+      - path: ./WSCodeService/.env
+        required: true
     restart: unless-stopped
+    networks:
+      - neo
+
+  app:
+    build:
+      context: ./core-service
+      dockerfile: Dockerfile
+    container_name: java-business-app
+    env_file:
+      - path: ./core-service/.env
+        required: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      analytics-service:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - neo
+
+  frontend:
+    container_name: neo_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3080:80"
+    depends_on:
+      - app
+      - analytics-service
+      - tasks-bank-service
+      - ws-cursor-service
+      - ws-code-service
+    restart: unless-stopped
+    networks:
+      - neo
 
 volumes:
   postgres_data:
 
+networks:
+  neo:
+    driver: bridge

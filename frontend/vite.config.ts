@@ -338,6 +338,17 @@ export default defineConfig({
             proxyReq.removeHeader('origin');
             proxyReq.removeHeader('referer');
           });
+          proxy.on('proxyReqWs', (proxyReq, req) => {
+            try {
+              const u = new URL(req.url ?? '', 'http://localhost');
+              const t = u.searchParams.get('access_token');
+              if (t) proxyReq.setHeader('Authorization', `Bearer ${t}`);
+            } catch {
+              /* ignore */
+            }
+            proxyReq.removeHeader('origin');
+            proxyReq.removeHeader('referer');
+          });
         },
       },
 

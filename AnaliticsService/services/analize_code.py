@@ -2,6 +2,7 @@
 
 import ast
 import re
+import textwrap
 from typing import Any
 
 import bashlex
@@ -70,10 +71,20 @@ class AnalyticsEngine:
     @staticmethod
     def analyze_python(code: str) -> int:
         """Число определений функций/классов в Python-AST, умноженное на коэффициент; при ошибке парсинга — 0."""
-        try:
-            tree = ast.parse(code)
-            return sum(1 for _ in ast.walk(tree) if isinstance(_, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef))) * 5
-        except: return 0
+        normalized = textwrap.dedent(code.expandtabs()).strip()
+        for src in (normalized, code.strip()):
+            if not src:
+                continue
+            try:
+                tree = ast.parse(src)
+                return sum(
+                    1
+                    for _ in ast.walk(tree)
+                    if isinstance(_, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef))
+                ) * 5
+            except Exception:
+                continue
+        return 0
 
     @staticmethod
     def analyze_java(code: str) -> int:

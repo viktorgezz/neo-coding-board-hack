@@ -6,13 +6,17 @@
  * finishes emitting content events, and throttle remote cursor sends to rAF.
  */
 
-import { lazy, Suspense, useEffect, useRef, useCallback, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCursorSocket, type CursorSelectionData } from '@/hooks/useCursorSocket';
 import { useRoomCodeSync } from '@/hooks/useRoomCodeSync';
 import { applyRemoteMonacoDocument, runRemoteDocumentApply } from '@/utils/applyRemoteMonacoDocument';
 import { useRafThrottleCallback } from '@/hooks/useRafThrottleCallback';
+import {
+  useInterviewerJavaSnapshots,
+  INTERVIEWER_SNAPSHOT_INTERVAL_MS,
+} from '@/hooks/useInterviewerJavaSnapshots';
 import { cursorDecorationKey } from '@/utils/cursorDecorationKey';
 import { defineNeoTheme, NEO_THEME_NAME } from '@/styles/monacoTheme';
 import styles from './CodeViewer.module.css';
@@ -99,6 +103,21 @@ export default function CodeViewer({
   }, [showCursor]);
 
   const prevShowCursorRef = useRef(showCursor);
+
+  const getCodeForSnapshot = useCallback(() => editorRef.current?.getValue() ?? '', []);
+
+  const {
+    sendSnapshot,
+    isStompReady,
+    stompError: stompSnapshotError,
+    canSnapshot,
+  } = useInterviewerJavaSnapshots({
+    idRoom,
+    token,
+    language,
+    getCode: getCodeForSnapshot,
+    enabled: true,
+  });
 
   const { liveCode, isConnected, error, sendCode, seedLatestText, flushSend } = useWebSocket({
     idRoom,
@@ -311,6 +330,17 @@ export default function CodeViewer({
     setEditorMountTick((n) => n + 1);
   }, [sendCursorPositionRaf, flushSend, seedLatestText]);
 
+  const snapshotHint = useMemo(() => {
+    if (!canSnapshot) {
+      return 'Снимки в БД Java: в JWT нет числового id (нужен вход через бэкенд, не мок-токен).';
+    }
+    if (stompSnapshotError) return stompSnapshotError;
+    if (isStompReady) {
+      return `STOMP к Java: снимок каждые ${INTERVIEWER_SNAPSHOT_INTERVAL_MS / 1000} с + кнопка ниже.`;
+    }
+    return 'Подключение STOMP к Java…';
+  }, [canSnapshot, stompSnapshotError, isStompReady]);
+
   return (
     <div className={styles.codeViewerRoot}>
 
@@ -319,6 +349,22 @@ export default function CodeViewer({
           Соединение потеряно. Проверьте каналы code/cursor.
         </div>
       )}
+
+      <div className={styles.snapshotBar}>
+        <button
+          type="button"
+          className={styles.snapshotBtn}
+          disabled={!canSnapshot || !isStompReady}
+          onClick={() => { sendSnapshot(); }}
+        >
+          Снимок кода → Java
+        </button>
+        <span
+          className={`${styles.snapshotHint} ${isStompReady && canSnapshot ? styles.snapshotOk : styles.snapshotWarn}`}
+        >
+          {snapshotHint}
+        </span>
+      </div>
 
       <div className={styles.editorWrapper}>
         <Suspense fallback={EDITOR_FALLBACK}>

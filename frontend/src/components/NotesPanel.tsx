@@ -18,6 +18,7 @@ import {
   useMemo,
   type KeyboardEvent,
 } from 'react';
+import { getTasksBankApiRoot } from '@/api/tasksBankClient';
 import NoteRow from './NoteRow';
 import type { NoteResponse } from './NoteRow';
 import styles from './NotesPanel.module.css';
@@ -62,10 +63,7 @@ interface TaskRead {
   category_id: number;
 }
 
-const TASKS_BANK_BASE_URL = (
-  import.meta.env.VITE_TASKS_BANK_API_BASE_URL as string | undefined
-  ?? '/tasks-api'
-).replace(/\/$/, '');
+const TASKS_BANK_BASE_URL = getTasksBankApiRoot();
 
 export interface NotesPanelProps {
   idRoom:   string;
@@ -129,7 +127,9 @@ export default function NotesPanel({
   useEffect(() => {
     async function fetchTaskCategories() {
       try {
-        const res = await fetch(`${TASKS_BANK_BASE_URL}/api/v1/categories`);
+        const res = await fetch(`${TASKS_BANK_BASE_URL}/api/v1/categories`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) return;
         const data = await res.json() as CategoryRead[];
         setTaskCategories(data);
@@ -138,7 +138,7 @@ export default function NotesPanel({
       }
     }
     void fetchTaskCategories();
-  }, []);
+  }, [token]);
 
   // ── Task bank: fetch tasks when filters change ─────────────────────────
 
@@ -152,7 +152,9 @@ export default function NotesPanel({
         if (selectedDifficulty !== null) params.set('difficulty',   selectedDifficulty);
         const query = params.toString();
         const url   = `${TASKS_BANK_BASE_URL}/api/v1/tasks${query ? `?${query}` : ''}`;
-        const res   = await fetch(url);
+        const res   = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json() as TaskRead[];
         setTasks(data);
@@ -163,7 +165,7 @@ export default function NotesPanel({
       }
     }
     void fetchTasks();
-  }, [selectedCategory, selectedDifficulty]);
+  }, [selectedCategory, selectedDifficulty, token]);
 
   // ── Add note ───────────────────────────────────────────────────────────
 

@@ -313,29 +313,48 @@ class GetMetrics:
         }
 
     def get_radar_metrics(self) -> dict[str, int]:
-        """Шесть осей радара из `radar_metrics` (через candidate_report комнаты); без строки — нули."""
+        """Радар: из сохранённого candidate_report, иначе из оценки интервьюера (после POST /history)."""
         cr = self._session.scalar(
             select(CandidateReportRecord)
             .where(CandidateReportRecord.room_id == self.room_id)
             .options(selectinload(CandidateReportRecord.radar_metrics))
         )
-        if not cr or cr.radar_metrics is None:
+        if cr and cr.radar_metrics is not None:
+            rm = cr.radar_metrics
             return {
-                "systemDesign": 0,
-                "codeReadability": 0,
-                "communication": 0,
-                "coachability": 0,
-                "technicalScore": 0,
-                "integrity": 0,
+                "systemDesign": rm.system_design,
+                "codeReadability": rm.code_readability,
+                "communication": rm.communication,
+                "coachability": rm.coachability,
+                "technicalScore": rm.technical_score,
+                "integrity": rm.integrity,
             }
-        rm = cr.radar_metrics
+
+        assess = self._session.get(InterviewerAssessmentRecord, self.room_id)
+        if assess:
+            avg4 = (
+                assess.system_design
+                + assess.code_readability
+                + assess.communication_skills
+                + assess.coachability
+            ) / 4.0
+            tech = int(round(avg4))
+            return {
+                "systemDesign": assess.system_design,
+                "codeReadability": assess.code_readability,
+                "communication": assess.communication_skills,
+                "coachability": assess.coachability,
+                "technicalScore": tech,
+                "integrity": assess.coachability,
+            }
+
         return {
-            "systemDesign": rm.system_design,
-            "codeReadability": rm.code_readability,
-            "communication": rm.communication,
-            "coachability": rm.coachability,
-            "technicalScore": rm.technical_score,
-            "integrity": rm.integrity,
+            "systemDesign": 0,
+            "codeReadability": 0,
+            "communication": 0,
+            "coachability": 0,
+            "technicalScore": 0,
+            "integrity": 0,
         }
 
     def _get_candidate_report_summary(self) -> dict[str, str]:
